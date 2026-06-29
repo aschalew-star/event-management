@@ -1,0 +1,114 @@
+actions:
+  - name: registerUser
+    definition:
+      kind: synchronous
+      # handler: http://golang-backend:4000/auth/register
+      # handler: http://host.docker.internal:4000/auth/register
+      handler: http://172.17.0.1:4000/auth/register
+      forward_client_headers: true
+    permissions:
+      - role: anonymous
+
+  - name: loginUser
+    definition:
+      kind: synchronous
+      # handler: http://golang-backend:4000/auth/login
+      handler: http://172.17.0.1:4000/auth/login
+
+      forward_client_headers: true
+    permissions:
+      - role: anonymous
+
+  - name: createEvent
+    definition:
+      kind: synchronous
+      handler: http://golang-backend:4000/api/events
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+  - name: uploadEventImages
+    definition:
+      kind: synchronous
+      handler: http://golang-backend:4000/api/events/images
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+custom_types:
+  enums: []
+
+  input_objects:
+    - name: RegisterUserInput
+      fields:
+        - name: name
+          type: String!
+        - name: email
+          type: String!
+        - name: password
+          type: String!
+
+    - name: LoginUserInput
+      fields:
+        - name: email
+          type: String!
+        - name: password
+          type: String!
+
+    - name: CreateEventInput
+      fields:
+        - name: title
+          type: String!
+        - name: description
+          type: String
+        - name: category_id
+          type: uuid
+        - name: price
+          type: Float
+        - name: is_free
+          type: Boolean
+        - name: venue
+          type: String
+        - name: address
+          type: String
+        - name: latitude
+          type: Float
+        - name: longitude
+          type: Float
+        - name: event_date
+          type: String
+        - name: start_time
+          type: String
+        - name: end_time
+          type: String
+        - name: status
+          type: String
+
+  objects:
+    - name: AuthResponse
+      fields:
+        - name: token
+          type: String!
+        - name: user_id
+          type: String!
+        - name: message
+          type: String!
+
+    - name: EventResponse
+      fields:
+        - name: id
+          type: uuid!
+        - name: message
+          type: String!
+
+    - name: UploadResponse
+      fields:
+        - name: success
+          type: Boolean!
+        - name: message
+          type: String!
+        - name: urls
+          type: "[String!]!"
+
+  scalars:
+    - name: uuid

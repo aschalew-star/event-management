@@ -1,0 +1,52 @@
+scalar uuid
+
+input RegisterUserInput {
+  name: String!
+  email: String!
+  password: String!
+}
+
+input LoginUserInput {
+  email: String!
+  password: String!
+}
+
+input CreateEventInput {
+  title: String!
+  description: String
+  category_id: uuid
+  price: Float
+  is_free: Boolean
+  venue: String
+  address: String
+  latitude: Float
+  longitude: Float
+  event_date: String
+  start_time: String
+  end_time: String
+  status: String
+}
+
+type AuthResponse {
+  token: String!
+  user_id: String!
+  message: String!
+}
+
+type EventResponse {
+  id: uuid!
+  message: String!
+}
+
+type UploadResponse {
+  success: Boolean!
+  message: String!
+  urls: [String!]!
+}
+
+type Mutation {
+  registerUser(input: RegisterUserInput!): AuthResponse
+  loginUser(input: LoginUserInput!): AuthResponse
+  createEvent(input: CreateEventInput!): EventResponse
+  uploadEventImages(event_id: uuid!, images: [String!]!): UploadResponse
+}

@@ -1,5 +1,4 @@
-scalar uuid
-
+# ✅ KEEP THIS AS IS - DO NOT MODIFY
 input RegisterUserInput {
   name: String!
   email: String!
@@ -11,6 +10,7 @@ input LoginUserInput {
   password: String!
 }
 
+# 🔴 WE NEED TO MODIFY THIS - ADD featured_image
 input CreateEventInput {
   title: String!
   description: String
@@ -21,10 +21,12 @@ input CreateEventInput {
   address: String
   latitude: Float
   longitude: Float
-  event_date: String
+  event_date: timestamp
   start_time: String
   end_time: String
   status: String
+  featured_image: String   # 🔴 ADD THIS - base64 image data
+  tags: [String!]          # 🔴 ADD THIS - tags array
 }
 
 type AuthResponse {
@@ -33,9 +35,12 @@ type AuthResponse {
   message: String!
 }
 
+# 🔴 MODIFY EventResponse - add featured_image
 type EventResponse {
   id: uuid!
   message: String!
+  success: Boolean!        # 🔴 ADD THIS
+  featured_image: String   # 🔴 ADD THIS
 }
 
 type UploadResponse {

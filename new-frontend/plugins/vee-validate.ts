@@ -1,8 +1,14 @@
 import { defineNuxtPlugin } from '#app'
 import { defineRule, configure } from 'vee-validate'
 import { required, email, min, max, confirmed } from '@vee-validate/rules'
+import { Form, Field, ErrorMessage } from 'vee-validate';
 
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
+ 
+  nuxtApp.vueApp.component('VeeForm', Form);
+  nuxtApp.vueApp.component('VeeField', Field);
+  nuxtApp.vueApp.component('VeeErrorMessage', ErrorMessage);
+
   // Register rules
   defineRule('required', required)
   defineRule('email', email)

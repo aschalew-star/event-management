@@ -1,6 +1,8 @@
+// stores/event.ts
 import { defineStore } from 'pinia'
+import { useAuthStore } from './auth'
 
-interface Event {
+export interface Event {
   id: string
   title: string
   description?: string
@@ -28,22 +30,24 @@ interface EventState {
   events: Event[]
   currentEvent: Event | null
   loading: boolean
+  error: string | null
 }
 
 export const useEventStore = defineStore('events', {
   state: (): EventState => ({
     events: [],
     currentEvent: null,
-    loading: false
+    loading: false,
+    error: null
   }),
 
   getters: {
     getUpcomingEvents: (state) => {
-      const now = new Date().toISOString()
+      const now = new Date().toISOString().split('T')[0]
       return state.events.filter(event => event.event_date && event.event_date >= now)
     },
     getPastEvents: (state) => {
-      const now = new Date().toISOString()
+      const now = new Date().toISOString().split('T')[0]
       return state.events.filter(event => event.event_date && event.event_date < now)
     },
     getEventsByCategory: (state) => (categoryId: string) => {
@@ -62,13 +66,14 @@ export const useEventStore = defineStore('events', {
 
     async fetchEvents(filters?: any) {
       this.loading = true
+      this.error = null
       try {
-        const response = await $fetch('/api/graphql', {
+        const response: any = await $fetch('http://localhost:8080/v1/graphql', {
           method: 'POST',
           body: {
             query: `
-              query GetEvents($where: events_bool_exp, $order: [events_order_by!]) {
-                events(where: $where, order_by: $order) {
+              query GetEvents($where: events_bool_exp) {
+                events(where: $where, order_by: [{ event_date: asc }]) {
                   id
                   title
                   description
@@ -83,7 +88,6 @@ export const useEventStore = defineStore('events', {
                   start_time
                   end_time
                   status
-                  images
                   created_at
                   updated_at
                   category {
@@ -94,18 +98,18 @@ export const useEventStore = defineStore('events', {
               }
             `,
             variables: {
-              where: filters || {},
-              order: [{ event_date: 'asc' }]
+              where: filters || {}
             }
           },
           headers: {
-            'Authorization': `Bearer ${this.authToken}`
+            Authorization: `Bearer ${this.authToken}`
           }
         })
 
         this.events = response?.data?.events || []
         return { success: true, data: this.events }
       } catch (error: any) {
+        this.error = error.message
         console.error('Fetch events error:', error)
         return { success: false, error: error.message }
       } finally {
@@ -115,13 +119,14 @@ export const useEventStore = defineStore('events', {
 
     async fetchEvent(id: string) {
       this.loading = true
+      this.error = null
       try {
-        const response = await $fetch('/api/graphql', {
+        const response: any = await $fetch('http://localhost:8080/v1/graphql', {
           method: 'POST',
           body: {
             query: `
-              query GetEvent($id: ID!) {
-                event(id: $id) {
+              query GetEventByPk($id: uuid!) {
+                events_by_pk(id: $id) {
                   id
                   title
                   description
@@ -136,7 +141,6 @@ export const useEventStore = defineStore('events', {
                   start_time
                   end_time
                   status
-                  images
                   created_at
                   updated_at
                   category {
@@ -149,13 +153,14 @@ export const useEventStore = defineStore('events', {
             variables: { id }
           },
           headers: {
-            'Authorization': `Bearer ${this.authToken}`
+            Authorization: `Bearer ${this.authToken}`
           }
         })
 
-        this.currentEvent = response?.data?.event || null
+        this.currentEvent = response?.data?.events_by_pk || null
         return { success: true, data: this.currentEvent }
       } catch (error: any) {
+        this.error = error.message
         console.error('Fetch event error:', error)
         return { success: false, error: error.message }
       } finally {
@@ -165,89 +170,37 @@ export const useEventStore = defineStore('events', {
 
     async createEvent(eventData: any) {
       this.loading = true
+      this.error = null
       try {
-        const response = await $fetch('/api/graphql', {
-          method: 'POST',
-          body: {
-            query: `
-              mutation CreateEvent($input: CreateEventInput!) {
-                createEvent(input: $input) {
-                  id
-                  message
-                }
-              }
-            `,
-            variables: {
-              input: eventData
-            }
-          },
-          headers: {
-            'Authorization': `Bearer ${this.authToken}`
+        // Use your Go backend for event creation with image upload
+        const formData = new FormData()
+        Object.keys(eventData).forEach(key => {
+          if (key === 'images' && Array.isArray(eventData[key])) {
+            eventData[key].forEach((file: File) => {
+              formData.append('images', file)
+            })
+          } else if (eventData[key] !== null && eventData[key] !== undefined) {
+            formData.append(key, eventData[key].toString())
           }
         })
 
-        const data = response?.data?.createEvent
-        if (data?.id) {
-          return { success: true, id: data.id, message: data.message }
+        const response: any = await $fetch('http://localhost:4000/api/events/create', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${this.authToken}`
+          }
+        })
+
+        if (response?.success) {
+          // Refresh events list
+          await this.fetchEvents()
+          return { success: true, id: response.id, message: response.message }
         }
-        return { success: false, error: 'Failed to create event' }
+        return { success: false, error: response?.message || 'Failed to create event' }
       } catch (error: any) {
+        this.error = error.message
         console.error('Create event error:', error)
-        return { success: false, error: error.message }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateEvent(id: string, eventData: any) {
-      this.loading = true
-      try {
-        const response = await $fetch('/api/graphql', {
-          method: 'POST',
-          body: {
-            query: `
-              mutation UpdateEvent($id: ID!, $input: UpdateEventInput!) {
-                updateEvent(id: $id, input: $input) {
-                  id
-                  title
-                  description
-                  category_id
-                  price
-                  is_free
-                  venue
-                  address
-                  latitude
-                  longitude
-                  event_date
-                  start_time
-                  end_time
-                  status
-                  images
-                  updated_at
-                  category {
-                    id
-                    name
-                  }
-                }
-              }
-            `,
-            variables: {
-              id,
-              input: eventData
-            }
-          },
-          headers: {
-            'Authorization': `Bearer ${this.authToken}`
-          }
-        })
-
-        const data = response?.data?.updateEvent
-        if (data?.id) {
-          return { success: true, data }
-        }
-        return { success: false, error: 'Failed to update event' }
-      } catch (error: any) {
-        console.error('Update event error:', error)
         return { success: false, error: error.message }
       } finally {
         this.loading = false
@@ -256,72 +209,33 @@ export const useEventStore = defineStore('events', {
 
     async deleteEvent(id: string) {
       this.loading = true
+      this.error = null
       try {
-        const response = await $fetch('/api/graphql', {
+        const response: any = await $fetch('http://localhost:8080/v1/graphql', {
           method: 'POST',
           body: {
             query: `
-              mutation DeleteEvent($id: ID!) {
-                deleteEvent(id: $id) {
+              mutation DeleteEventByPk($id: uuid!) {
+                delete_events_by_pk(id: $id) {
                   id
-                  message
                 }
               }
             `,
             variables: { id }
           },
           headers: {
-            'Authorization': `Bearer ${this.authToken}`
+            Authorization: `Bearer ${this.authToken}`
           }
         })
 
-        const data = response?.data?.deleteEvent
-        if (data?.id) {
+        if (response?.data?.delete_events_by_pk?.id) {
           this.events = this.events.filter(event => event.id !== id)
-          return { success: true, message: data.message }
+          return { success: true, message: 'Event deleted successfully' }
         }
         return { success: false, error: 'Failed to delete event' }
       } catch (error: any) {
+        this.error = error.message
         console.error('Delete event error:', error)
-        return { success: false, error: error.message }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async uploadEventImages(eventId: string, images: string[]) {
-      this.loading = true
-      try {
-        const response = await $fetch('/api/graphql', {
-          method: 'POST',
-          body: {
-            query: `
-              mutation UploadEventImages($id: ID!, $images: [String!]!) {
-                uploadEventImages(id: $id, images: $images) {
-                  success
-                  message
-                  urls
-                }
-              }
-            `,
-            variables: {
-              id: eventId,
-              images
-            }
-          },
-          headers: {
-            'Authorization': `Bearer ${this.authToken}`
-          }
-        })
-
-        const data = response?.data?.uploadEventImages
-        return { 
-          success: data?.success || false, 
-          message: data?.message,
-          urls: data?.urls || []
-        }
-      } catch (error: any) {
-        console.error('Upload images error:', error)
         return { success: false, error: error.message }
       } finally {
         this.loading = false

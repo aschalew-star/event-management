@@ -34,6 +34,11 @@ func main() {
 		auth.POST("/login", handlers.Login)
 	}
 
+	event := router.Group("/api")
+	{
+		event.POST("/events", handlers.CreateEvent)
+	}
+
 	// Start the server on port 4000
 	router.Run(":4000")
 }

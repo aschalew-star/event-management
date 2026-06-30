@@ -1,9 +1,8 @@
+# actions.yaml - ✅ KEEP AS IS
 actions:
   - name: registerUser
     definition:
       kind: synchronous
-      # handler: http://golang-backend:4000/auth/register
-      # handler: http://host.docker.internal:4000/auth/register
       handler: http://172.17.0.1:4000/auth/register
       forward_client_headers: true
     permissions:
@@ -12,9 +11,7 @@ actions:
   - name: loginUser
     definition:
       kind: synchronous
-      # handler: http://golang-backend:4000/auth/login
       handler: http://172.17.0.1:4000/auth/login
-
       forward_client_headers: true
     permissions:
       - role: anonymous
@@ -22,10 +19,10 @@ actions:
   - name: createEvent
     definition:
       kind: synchronous
-      handler: http://golang-backend:4000/api/events
+      handler: http://172.17.0.1:4000/api/events
       forward_client_headers: true
     permissions:
-      - role: user
+      - role: anonymous
 
   - name: uploadEventImages
     definition:
@@ -37,7 +34,7 @@ actions:
 
 custom_types:
   enums: []
-
+  
   input_objects:
     - name: RegisterUserInput
       fields:
@@ -62,7 +59,7 @@ custom_types:
         - name: description
           type: String
         - name: category_id
-          type: uuid
+          type: String
         - name: price
           type: Float
         - name: is_free
@@ -76,13 +73,17 @@ custom_types:
         - name: longitude
           type: Float
         - name: event_date
-          type: String
+          type: timestamp
         - name: start_time
           type: String
         - name: end_time
           type: String
         - name: status
           type: String
+        - name: featured_image  # 🔴 ADD THIS
+          type: String
+        - name: tags            # 🔴 ADD THIS
+          type: "[String!]"
 
   objects:
     - name: AuthResponse
@@ -97,9 +98,13 @@ custom_types:
     - name: EventResponse
       fields:
         - name: id
-          type: uuid!
+          type: String!
         - name: message
           type: String!
+        - name: success         # 🔴 ADD THIS
+          type: Boolean!
+        - name: featured_image  # 🔴 ADD THIS
+          type: String
 
     - name: UploadResponse
       fields:
@@ -111,4 +116,4 @@ custom_types:
           type: "[String!]!"
 
   scalars:
-    - name: uuid
+    # - name: uuid

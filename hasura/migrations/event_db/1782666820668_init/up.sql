@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 SET check_function_bodies = false;
 CREATE FUNCTION public.get_event_stats(event_id uuid) RETURNS TABLE(total_bookmarks bigint, total_follows bigint, total_tickets_sold bigint, total_revenue numeric)
     LANGUAGE plpgsql

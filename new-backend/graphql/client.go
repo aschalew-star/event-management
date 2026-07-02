@@ -66,3 +66,28 @@ func Query(ctx context.Context, query interface{}, vars map[string]interface{}) 
 	}
 	return gqlClient.Query(ctx, query, vars)
 }
+
+// Add these functions to your graphql package
+
+func QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
+	if gqlClient == nil {
+		return fmt.Errorf("graphql client not initialized")
+	}
+	return gqlClient.QueryRaw(ctx, query, vars, result)
+}
+
+func MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}, result interface{}) error {
+	if gqlClient == nil {
+		return fmt.Errorf("graphql client not initialized")
+	}
+	return gqlClient.MutateRaw(ctx, mutation, vars, result)
+}
+
+// Add these methods to your Client struct
+func (c *Client) QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
+	return c.client.Query(ctx, result, vars)
+}
+
+func (c *Client) MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}, result interface{}) error {
+	return c.client.Mutate(ctx, result, vars)
+}

@@ -34,7 +34,7 @@ export const GET_ALL_EVENTS = gql`
         id
         name
         email
-        avatar
+        avatar_url
       }
     }
     events_aggregate(where: $filters) {
@@ -99,6 +99,172 @@ export const GET_FEATURED_EVENTS = gql`
         color
         icon
       }
+    }
+  }
+`;
+
+export const GET_EVENT_COMMENTS = gql`
+  query GetEventComments($eventId: uuid!, $limit: Int = 20) {
+    comments(
+      where: { event_id: { _eq: $eventId } }
+      order_by: { created_at: desc }
+      limit: $limit
+    ) {
+      id
+      content
+      created_at
+      user {
+        id
+        name
+        avatar_url
+      }
+    }
+  }
+`;
+
+
+export const GET_EVENT_BY_ID = gql`
+  query GetEventById($id: uuid!) {
+    events_by_pk(id: $id) {
+      id
+      title
+      description
+      price
+      is_free
+      venue
+      address
+      latitude
+      longitude
+      event_date
+      start_time
+      end_time
+      status
+      featured_image
+      view_count
+      created_at
+      updated_at
+      category {
+        id
+        name
+        icon
+        color
+      }
+      user {
+        id
+        name
+        email
+        avatar_url
+      }
+    }
+  }
+`;
+
+export const GET_RELATED_EVENTS = gql`
+  query GetRelatedEvents($categoryId: uuid, $eventId: uuid, $limit: Int = 4) {
+    events(
+      where: {
+        category_id: { _eq: $categoryId }
+        id: { _neq: $eventId }
+        status: { _eq: "published" }
+      }
+      limit: $limit
+      order_by: { event_date: asc }
+    ) {
+      id
+      title
+      description
+      venue
+      event_date
+      featured_image
+      is_free
+      price
+      category {
+        name
+        color
+        icon
+      }
+    }
+  }
+`;
+
+export const GET_EVENT_ATTENDEES = gql`
+  query GetEventAttendees($eventId: uuid!) {
+    bookmarks(where: { event_id: { _eq: $eventId } }) {
+      id
+      user {
+        id
+        name
+        avatar_url
+      }
+    }
+  }
+`;
+
+export const CHECK_EVENT_ATTENDANCE = gql`
+  query CheckEventAttendance($eventId: uuid!, $userId: uuid!) {
+    bookmarks(
+      where: {
+        event_id: { _eq: $eventId }
+        user_id: { _eq: $userId }
+      }
+    ) {
+      id
+    }
+  }
+`;
+
+export const CHECK_EVENT_FOLLOW = gql`
+  query CheckEventFollow($eventId: uuid!, $userId: uuid!) {
+    follows(
+      where: {
+        event_id: { _eq: $eventId }
+        user_id: { _eq: $userId }
+      }
+    ) {
+      id
+    }
+  }
+`;
+
+export const CHECK_EVENT_BOOKMARK = gql`
+  query CheckEventBookmark($eventId: uuid!, $userId: uuid!) {
+    bookmarks(
+      where: {
+        event_id: { _eq: $eventId }
+        user_id: { _eq: $userId }
+      }
+    ) {
+      id
+    }
+  }
+`;
+
+export const GET_EVENT_STATS = gql`
+  query GetEventStats($eventId: uuid!) {
+    bookmarks_aggregate(where: { event_id: { _eq: $eventId } }) {
+      aggregate {
+        count
+      }
+    }
+    follows_aggregate(where: { event_id: { _eq: $eventId } }) {
+      aggregate {
+        count
+      }
+    }
+  }
+`;
+
+export const GET_USER_TICKET = gql`
+  query GetUserTickets($userId: uuid!) {
+    tickets(
+      where: {
+        user_id: { _eq: $userId }
+        status: { _eq: "confirmed" }
+      }
+    ) {
+      id
+      event_id
+      status
     }
   }
 `;

@@ -5,4 +5,4 @@
       database_url: postgres://postgres:postgres@postgres:5432/event_db
       isolation_level: read-committed
       use_prepared_statements: false
-  tables: []
+  tables: "!include event_db/tables/tables.yaml"

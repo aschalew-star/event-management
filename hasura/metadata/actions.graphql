@@ -1,4 +1,14 @@
-# ✅ KEEP THIS AS IS - DO NOT MODIFY
+type Mutation {
+  createEvent(input: CreateEventInput!): EventResponse
+  loginUser(input: LoginUserInput!): AuthResponse
+  registerUser(input: RegisterUserInput!): AuthResponse
+  uploadEventImages(event_id: uuid!, images: [String!]!): UploadResponse
+  processChapaPayment(input: ProcessChapaPaymentInput!): ProcessChapaPaymentResponse
+  verifyChapaPayment(input: VerifyChapaPaymentInput!): VerifyChapaPaymentResponse
+}
+
+# --- Core Inputs (Untouched) ---
+
 input RegisterUserInput {
   name: String!
   email: String!
@@ -10,7 +20,6 @@ input LoginUserInput {
   password: String!
 }
 
-# 🔴 WE NEED TO MODIFY THIS - ADD featured_image
 input CreateEventInput {
   title: String!
   description: String
@@ -25,9 +34,26 @@ input CreateEventInput {
   start_time: String
   end_time: String
   status: String
-  featured_image: String   # 🔴 ADD THIS - base64 image data
-  tags: [String!]          # 🔴 ADD THIS - tags array
+  featured_image: String
+  tags: [String!]
 }
+
+# --- Fixed Chapa Payment Inputs ---
+
+input ProcessChapaPaymentInput {
+  eventId: String!
+  quantity: Int!
+  email: String!
+  phone: String!
+  firstName: String!
+  lastName: String!
+}
+
+input VerifyChapaPaymentInput {
+  transactionRef: String!
+}
+
+# --- Core Responses (Untouched) ---
 
 type AuthResponse {
   token: String!
@@ -35,12 +61,11 @@ type AuthResponse {
   message: String!
 }
 
-# 🔴 MODIFY EventResponse - add featured_image
 type EventResponse {
   id: uuid!
   message: String!
-  success: Boolean!        # 🔴 ADD THIS
-  featured_image: String   # 🔴 ADD THIS
+  success: Boolean!
+  featured_image: String
 }
 
 type UploadResponse {
@@ -49,9 +74,30 @@ type UploadResponse {
   urls: [String!]!
 }
 
-type Mutation {
-  registerUser(input: RegisterUserInput!): AuthResponse
-  loginUser(input: LoginUserInput!): AuthResponse
-  createEvent(input: CreateEventInput!): EventResponse
-  uploadEventImages(event_id: uuid!, images: [String!]!): UploadResponse
+# --- Fixed Chapa Payment Responses ---
+
+type ProcessChapaPaymentResponse {
+  success: Boolean!
+  message: String!
+  data: ChapaPaymentData!
+}
+
+type ChapaPaymentData {
+  checkout_url: String!
+  transaction_ref: String!
+}
+
+type VerifyChapaPaymentResponse {
+  success: Boolean!
+  message: String!
+  status: String!
+  ticket: TicketData
+}
+
+type TicketData {
+  id: String!
+  event_id: String!
+  quantity: Int!
+  total_price: Float!
+  status: String!
 }

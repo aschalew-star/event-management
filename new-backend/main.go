@@ -37,6 +37,9 @@ func main() {
 	event := router.Group("/api")
 	{
 		event.POST("/events", handlers.CreateEvent)
+		event.POST("/payment/initialize", handlers.ProcessPayment)
+		event.POST("/payment/verify", handlers.VerifyPayment)
+		event.Any("/payment/callback", handlers.ChapaCallback) // Accepts GET redirects and POST webhook engines
 	}
 
 	// Start the server on port 4000

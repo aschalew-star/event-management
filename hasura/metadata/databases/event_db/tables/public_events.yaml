@@ -1,0 +1,147 @@
+table:
+  name: events
+  schema: public
+object_relationships:
+  - name: category
+    using:
+      foreign_key_constraint_on: category_id
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
+array_relationships:
+  - name: bookmarks
+    using:
+      foreign_key_constraint_on:
+        column: event_id
+        table:
+          name: bookmarks
+          schema: public
+  - name: event_images
+    using:
+      foreign_key_constraint_on:
+        column: event_id
+        table:
+          name: event_images
+          schema: public
+  - name: event_tags
+    using:
+      foreign_key_constraint_on:
+        column: event_id
+        table:
+          name: event_tags
+          schema: public
+  - name: follows
+    using:
+      foreign_key_constraint_on:
+        column: event_id
+        table:
+          name: follows
+          schema: public
+  - name: tickets
+    using:
+      foreign_key_constraint_on:
+        column: event_id
+        table:
+          name: tickets
+          schema: public
+insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - is_free
+        - end_time
+        - featured_image
+        - start_time
+        - status
+        - title
+        - venue
+        - view_count
+        - latitude
+        - longitude
+        - price
+        - address
+        - description
+        - created_at
+        - event_date
+        - updated_at
+        - category_id
+        - id
+        - user_id
+    comment: ""
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - is_free
+        - end_time
+        - featured_image
+        - start_time
+        - status
+        - title
+        - venue
+        - view_count
+        - latitude
+        - longitude
+        - price
+        - address
+        - description
+        - created_at
+        - event_date
+        - updated_at
+        - category_id
+        - id
+        - user_id
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - is_free
+        - end_time
+        - featured_image
+        - start_time
+        - status
+        - title
+        - venue
+        - view_count
+        - latitude
+        - longitude
+        - price
+        - address
+        - description
+        - created_at
+        - event_date
+        - updated_at
+        - category_id
+        - id
+        - user_id
+      filter: {}
+      allow_aggregations: true
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - is_free
+        - end_time
+        - featured_image
+        - start_time
+        - status
+        - title
+        - venue
+        - view_count
+        - latitude
+        - longitude
+        - price
+        - address
+        - description
+        - created_at
+        - event_date
+        - updated_at
+        - category_id
+        - id
+        - user_id
+      filter: {}
+      allow_aggregations: true
+    comment: ""
+

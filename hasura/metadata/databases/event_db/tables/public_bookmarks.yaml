@@ -1,0 +1,78 @@
+table:
+  name: bookmarks
+  schema: public
+object_relationships:
+  - name: event
+    using:
+      foreign_key_constraint_on: event_id
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
+insert_permissions:
+    - role: anonymous
+      permission:
+        check: {}
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+      comment: "Allow anonymous users to insert bookmarks"
+    - role: user
+      permission:
+        check: {}
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+      comment: "Allow authenticated users to insert bookmarks"
+select_permissions:
+    - role: anonymous
+      permission:
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+        filter: {}
+      comment: "Allow anonymous users to select bookmarks"
+    - role: user
+      permission:
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+        filter: {}
+      comment: "Allow authenticated users to select bookmarks"
+update_permissions:
+    - role: anonymous
+      permission:
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+        filter: {}
+        check: null
+      comment: "Allow anonymous users to update bookmarks"
+    - role: user
+      permission:
+        columns:
+          - id
+          - user_id
+          - event_id
+          - created_at
+        filter: {}
+        check: null
+      comment: "Allow authenticated users to update bookmarks"
+delete_permissions:
+    - role: anonymous
+      permission:
+        filter: {}
+      comment: "Allow anonymous users to delete bookmarks"
+    - role: user
+      permission:
+        filter: {}
+      comment: "Allow authenticated users to delete bookmarks"

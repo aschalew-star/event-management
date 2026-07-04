@@ -14,13 +14,6 @@ import (
 	guuid "github.com/google/uuid"
 )
 
-// Note: 'uuid' and 'numeric' custom type definitions are omitted here
-// as they are globally managed from handlers/events.go.
-
-// ============================================
-// HASURA ACTION PAYLOAD TYPES
-// ============================================
-
 type ProcessPaymentArgs struct {
 	EventID   string `json:"eventId"`
 	Quantity  int    `json:"quantity"`

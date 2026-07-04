@@ -44,7 +44,9 @@ select_permissions:
           - user_id
           - event_id
           - created_at
-        filter: {}
+        filter: 
+          user_id: 
+            _eq: X-Hasura-User-Id
       comment: "Allow authenticated users to select bookmarks"
 update_permissions:
     - role: anonymous

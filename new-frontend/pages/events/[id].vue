@@ -378,7 +378,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { useAuthStore } from '~/stores/auth';
@@ -401,6 +401,10 @@ import {
   CREATE_TICKET,
 } from '~/graphql/eventMutations';
 
+definePageMeta({
+  middleware: 'auth'
+});
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -408,10 +412,8 @@ const toast = useToast();
 
 // Safely extract eventId from dynamic routes
 const eventId = computed(() => {
-  const id = route.params.id as string;
-  if (!id || id.length < 10) {
-    return null;
-  }
+  const id = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
+  if (!id || id.length < 10) return null;
   return id;
 });
 
@@ -419,6 +421,7 @@ const isValidEventId = computed(() => {
   return eventId.value !== null && eventId.value.length > 10;
 });
 
+// UI State loaders
 const followLoading = ref(false);
 const bookmarkLoading = ref(false);
 const ticketLoading = ref(false);
@@ -426,11 +429,26 @@ const isFollowing = ref(false);
 const isBookmarked = ref(false);
 const hasTicket = ref(false);
 
+// Helper function to get clean event ID
+const getCleanEventId = (): string => {
+  const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
+  return String(rawId || '').trim();
+};
+
+// Get current user ID helper
+const getCurrentUserId = (): string | null => {
+  if (authStore.isAuthenticated && authStore.user?.id) {
+    return authStore.user.id;
+  }
+  return null;
+};
+
 // 1. Fetch Event Details
 const {
   result: eventResult,
   loading: eventLoading,
   error: eventError,
+  refetch: refetchEvent,
 } = useQuery(
   GET_EVENT_BY_ID,
   () => ({ id: eventId.value }),
@@ -477,12 +495,12 @@ const { result: followResult, refetch: refetchFollow } = useQuery(
   CHECK_EVENT_FOLLOW,
   () => ({
     eventId: eventId.value,
-    userId: authStore.isAuthenticated && authStore.user?.id ? authStore.user.id : null,
+    userId: getCurrentUserId(),
   }),
   {
     fetchPolicy: 'network-only',
     prefetch: false,
-    skip: () => !authStore.isAuthenticated || !authStore.user?.id || !isValidEventId.value,
+    skip: () => !authStore.isAuthenticated || !getCurrentUserId() || !isValidEventId.value,
   }
 );
 
@@ -495,12 +513,12 @@ const { result: bookmarkResult, refetch: refetchBookmark } = useQuery(
   CHECK_EVENT_BOOKMARK,
   () => ({
     eventId: eventId.value,
-    userId: authStore.isAuthenticated && authStore.user?.id ? authStore.user.id : null,
+    userId: getCurrentUserId(),
   }),
   {
     fetchPolicy: 'network-only',
     prefetch: false,
-    skip: () => !authStore.isAuthenticated || !authStore.user?.id || !isValidEventId.value,
+    skip: () => !authStore.isAuthenticated || !getCurrentUserId() || !isValidEventId.value,
   }
 );
 
@@ -530,13 +548,13 @@ const bookmarksCount = computed(() => {
 const { result: ticketResult, refetch: refetchTicket } = useQuery(
   GET_USER_TICKET,
   () => ({
-    userId: authStore.isAuthenticated && authStore.user?.id ? authStore.user.id : null,
+    userId: getCurrentUserId(),
     eventId: eventId.value,
   }),
   {
     fetchPolicy: 'network-only',
     prefetch: false,
-    skip: () => !authStore.isAuthenticated || !authStore.user?.id || !isValidEventId.value,
+    skip: () => !authStore.isAuthenticated || !getCurrentUserId() || !isValidEventId.value,
   }
 );
 
@@ -546,7 +564,7 @@ watch(ticketResult, (result) => {
   }
 }, { immediate: true });
 
-// Mutations - Using the mutate function correctly
+// Mutations
 const { mutate: followMutation } = useMutation(FOLLOW_EVENT);
 const { mutate: unfollowMutation } = useMutation(UNFOLLOW_EVENT);
 const { mutate: bookmarkMutation } = useMutation(BOOKMARK_EVENT);
@@ -580,20 +598,27 @@ const formatDate = (dateStr: string, full: boolean = false) => {
   });
 };
 
-// --- Action Handlers ---
+// --- FIXED Action Handlers ---
 
 const handleTicketAction = async () => {
-  if (!authStore.isAuthenticated || !authStore.user?.id) {
+  if (!authStore.isAuthenticated) {
     toast.warning('Please sign in to get a ticket');
     router.push('/login');
     return;
   }
-  
-  if (!isValidEventId.value || !eventId.value) {
-    toast.error('Invalid event ID. Please refresh and try again.');
+
+  const userId = getCurrentUserId();
+  if (!userId) {
+    toast.error('User ID not found. Please log in again.');
     return;
   }
-  
+
+  const targetEventId = getCleanEventId();
+  if (!targetEventId || targetEventId.length < 10) {
+    toast.error('Invalid event configuration context.');
+    return;
+  }
+
   if (hasTicket.value) {
     toast.info('You already have a ticket for this event!');
     return;
@@ -602,82 +627,97 @@ const handleTicketAction = async () => {
   try {
     if (event.value?.is_free) {
       ticketLoading.value = true;
-      
-      const result = await createTicketMutation({
-        eventId: eventId.value,
+
+      await createTicketMutation({
+        eventId: targetEventId,
+        userId: userId,
         quantity: 1,
         totalPrice: 0,
         status: 'confirmed',
       });
-      
-      console.log('Ticket creation result:', result);
+
       await refetchTicket();
       toast.success('🎉 Free ticket claimed successfully!');
     } else {
       router.push({
-        path: `/payment/${eventId.value}`,
+        path: `/payment/${targetEventId}`,
         query: {
           title: event.value?.title,
           price: event.value?.price,
-          eventId: eventId.value,
+          eventId: targetEventId,
         }
       });
     }
   } catch (error: any) {
-    console.error('Ticket error details:', error);
-    toast.error(error.message || 'Failed to process ticket');
+    console.error('Ticket operation critical error:', error);
+    toast.error(error.message || 'Failed to process ticket request.');
   } finally {
     ticketLoading.value = false;
   }
 };
 
+// FIXED: toggleFollow with user_id
 const toggleFollow = async () => {
   if (!authStore.isAuthenticated) {
     toast.warning('Please sign in to follow events');
     router.push('/login');
     return;
   }
-  
-  if (!isValidEventId.value || !eventId.value) {
-    toast.error('Invalid event ID. Please refresh and try again.');
+
+  const userId = getCurrentUserId();
+  if (!userId) {
+    toast.error('User ID not found. Please log in again.');
+    return;
+  }
+
+  const targetEventId = getCleanEventId();
+  if (!targetEventId || targetEventId.length < 10) {
+    toast.error('Action aborted: Invalid identifier.');
     return;
   }
 
   followLoading.value = true;
   try {
     if (isFollowing.value) {
-      const result = await unfollowMutation({
-        eventId: eventId.value
+      await unfollowMutation({
+        eventId: targetEventId
       });
-      console.log('Unfollow result:', result);
       isFollowing.value = false;
       toast.success('Unfollowed event');
     } else {
-      const result = await followMutation({
-        eventId: eventId.value
+      await followMutation({
+        eventId: targetEventId,
+        userId: userId
       });
-      console.log('Follow result:', result);
       isFollowing.value = true;
       toast.success('Following event!');
     }
     await refetchFollow();
   } catch (error: any) {
-    console.error('Follow error details:', error);
-    toast.error(error.message || 'Failed to update follow');
+    console.error('Follow request error details:', error);
+    toast.error(error.message || 'Failed to update follow status');
   } finally {
     followLoading.value = false;
   }
 };
 
+// FIXED: toggleBookmark with user_id
 const toggleBookmark = async () => {
   if (!authStore.isAuthenticated) {
     toast.warning('Please sign in to bookmark events');
     router.push('/login');
     return;
   }
-  
-  if (!isValidEventId.value || !eventId.value) {
-    toast.error('Invalid event ID. Please refresh and try again.');
+
+  const userId = getCurrentUserId();
+  if (!userId) {
+    toast.error('User ID not found. Please log in again.');
+    return;
+  }
+
+  const targetEventId = getCleanEventId();
+  if (!targetEventId || targetEventId.length < 10) {
+    toast.error('Action aborted: Invalid identifier.');
     return;
   }
 
@@ -685,14 +725,15 @@ const toggleBookmark = async () => {
   try {
     if (isBookmarked.value) {
       const result = await unbookmarkMutation({
-        eventId: eventId.value
+        eventId: targetEventId
       });
       console.log('Unbookmark result:', result);
       isBookmarked.value = false;
       toast.success('Bookmark removed');
     } else {
       const result = await bookmarkMutation({
-        eventId: eventId.value
+        eventId: targetEventId,
+        userId: userId
       });
       console.log('Bookmark result:', result);
       isBookmarked.value = true;
@@ -700,8 +741,8 @@ const toggleBookmark = async () => {
     }
     await refetchBookmark();
   } catch (error: any) {
-    console.error('Bookmark error details:', error);
-    toast.error(error.message || 'Failed to update bookmark');
+    console.error('Bookmark request error details:', error);
+    toast.error(error.message || 'Failed to update bookmark status');
   } finally {
     bookmarkLoading.value = false;
   }
@@ -710,7 +751,7 @@ const toggleBookmark = async () => {
 const shareEvent = (platform: string) => {
   const url = window.location.href;
   const title = encodeURIComponent(event.value?.title || '');
-  
+
   switch (platform) {
     case 'facebook':
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
@@ -730,13 +771,13 @@ const shareEvent = (platform: string) => {
 
 const addToCalendar = () => {
   if (!event.value) return;
-  
+
   const startDate = new Date(event.value.event_date);
   if (event.value.start_time) {
     const [hours, minutes] = event.value.start_time.split(':');
     startDate.setHours(parseInt(hours), parseInt(minutes));
   }
-  
+
   const endDate = new Date(startDate);
   if (event.value.end_time) {
     const [hours, minutes] = event.value.end_time.split(':');
@@ -744,13 +785,13 @@ const addToCalendar = () => {
   } else {
     endDate.setHours(startDate.getHours() + 2);
   }
-  
+
   const formatDateForCalendar = (date: Date) => {
     return date.toISOString().replace(/[-:]/g, '').split('.')[0];
   };
-  
+
   const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.value.title)}&details=${encodeURIComponent(event.value.description)}&location=${encodeURIComponent(event.value.venue || event.value.address)}&dates=${formatDateForCalendar(startDate)}/${formatDateForCalendar(endDate)}`;
-  
+
   window.open(calendarUrl, '_blank');
 };
 

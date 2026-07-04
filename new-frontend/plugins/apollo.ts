@@ -6,9 +6,11 @@ import { useAuthStore } from '~/stores/auth'
 export default defineNuxtPlugin(() => {
   const isServer = import.meta.env.SSR
   
+  // FIXED: Point directly to the GraphQL endpoint on both client and server 
+  // (unless you explicitly built a Nuxt server proxy route at /api/graphql)
   const uri = isServer 
     ? (process.env.HASURA_GRAPHQL_ENDPOINT || 'http://localhost:8080/v1/graphql')
-    : '/api/graphql'
+    : 'http://localhost:8080/v1/graphql'
 
   const httpLink = createHttpLink({ uri })
 

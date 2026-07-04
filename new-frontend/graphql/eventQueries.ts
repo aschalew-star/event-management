@@ -268,3 +268,147 @@ export const GET_USER_TICKET = gql`
     }
   }
 `;
+
+
+
+
+// graphql/eventQueries.ts
+
+export const GET_USER_FOLLOWS = gql`
+  query GetUserFollows($userId: uuid!) {
+    follows(
+      where: { user_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      created_at
+      event_id
+      user_id
+      event {
+        id
+        title
+        description
+        featured_image
+        is_free
+        price
+        event_date
+        venue
+        address
+        status
+        user {
+          id
+          name
+          email
+        }
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+export const GET_USER_BOOKMARKS = gql`
+  query GetUserBookmarks($userId: uuid!) {
+    bookmarks(
+      where: { user_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      event_id
+      created_at
+      event {
+        id
+        title
+        featured_image
+        is_free
+        price
+        event_date
+        venue
+        user {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+
+// graphql/eventQueries.ts
+
+export const GET_USER_EVENTS = gql`
+  query GetUserEvents($userId: uuid!) {
+    events(
+      where: { 
+        user_id: { _eq: $userId }
+        status: { _neq: "draft" }
+      }
+      order_by: { event_date: asc }
+    ) {
+      id
+      title
+      description
+      featured_image
+      is_free
+      price
+      event_date
+      venue
+      address
+      latitude
+      longitude
+      status
+      start_time
+      end_time
+      view_count
+      created_at
+      user_id
+      category_id
+      user {
+        id
+        name
+        email
+        avatar_url
+      }
+      category {
+        id
+        name
+        icon
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+export const GET_USER_FOLLOWERS = gql`
+  query GetUserFollowers($userId: uuid!) {
+    follows(
+      where: { user_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      created_at
+      user_id
+      event_id
+      user {
+        id
+        name
+        email
+        avatar_url
+        bio
+      }
+      event {
+        id
+        title
+        featured_image
+        event_date
+        venue
+        is_free
+        price
+        status
+      }
+    }
+  }
+`;

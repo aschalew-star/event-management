@@ -1,15 +1,14 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
 SET check_function_bodies = false;
-CREATE FUNCTION public.get_event_stats(event_id uuid) RETURNS TABLE(total_bookmarks bigint, total_follows bigint, total_tickets_sold bigint, total_revenue numeric)
+CREATE FUNCTION public.get_event_stats(event_id uuid) RETURNS TABLE(total_bookmarks bigint, total_tickets_sold bigint, total_revenue numeric)
     LANGUAGE plpgsql
     AS $_$
 BEGIN
     RETURN QUERY
     SELECT 
-        (SELECT COUNT(*) FROM bookmarks WHERE event_id = $1) AS total_bookmarks,
-        (SELECT COUNT(*) FROM follows WHERE event_id = $1) AS total_follows,
-        (SELECT COUNT(*) FROM tickets WHERE event_id = $1 AND status = 'confirmed') AS total_tickets_sold,
-        (SELECT COALESCE(SUM(total_price), 0) FROM tickets WHERE event_id = $1 AND status = 'confirmed') AS total_revenue;
+        (SELECT COUNT(*) FROM bookmarks WHERE bookmarks.event_id = $1) AS total_bookmarks,
+        (SELECT COUNT(*) FROM tickets WHERE tickets.event_id = $1 AND tickets.status = 'confirmed') AS total_tickets_sold,
+        (SELECT COALESCE(SUM(total_price), 0) FROM tickets WHERE tickets.event_id = $1 AND tickets.status = 'confirmed') AS total_revenue;
 END;
 $_$;
 CREATE FUNCTION public.get_events_near_location(lat numeric, lng numeric, radius_km numeric) RETURNS TABLE(id uuid, title character varying, description text, venue character varying, address text, latitude numeric, longitude numeric, distance numeric)
@@ -25,13 +24,11 @@ BEGIN
         e.address,
         e.latitude,
         e.longitude,
-        (6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * 
-         cos(radians(e.longitude) - radians(lng)) + 
+        (6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(lng)) + 
          sin(radians(lat)) * sin(radians(e.latitude)))) AS distance
     FROM events e
     WHERE e.status = 'published'
-    AND (6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * 
-         cos(radians(e.longitude) - radians(lng)) + 
+    AND (6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(lng)) + 
          sin(radians(lat)) * sin(radians(e.latitude)))) < radius_km
     ORDER BY distance;
 END;
@@ -54,8 +51,8 @@ END;
 $$;
 CREATE TABLE public.bookmarks (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    user_id uuid,
-    event_id uuid,
+    user_id uuid NOT NULL,
+    event_id uuid NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE public.categories (
@@ -69,7 +66,7 @@ CREATE TABLE public.categories (
 );
 CREATE TABLE public.event_images (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    event_id uuid,
+    event_id uuid NOT NULL,
     image_url character varying(500) NOT NULL,
     is_featured boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
@@ -93,7 +90,6 @@ CREATE TABLE public.events (
     event_date timestamp without time zone NOT NULL,
     start_time character varying(10),
     end_time character varying(10),
-    featured_image character varying(500),
     status character varying(50) DEFAULT 'draft'::character varying,
     view_count integer DEFAULT 0,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -101,9 +97,20 @@ CREATE TABLE public.events (
 );
 CREATE TABLE public.follows (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    user_id uuid,
-    event_id uuid,
+    follower_id uuid NOT NULL,
+    followed_user_id uuid NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE public.payments (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    amount numeric(10,2) NOT NULL,
+    currency character varying(10) DEFAULT 'USD'::character varying,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    transaction_ref character varying(255),
+    payment_method character varying(50),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE public.tags (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
@@ -112,13 +119,12 @@ CREATE TABLE public.tags (
 );
 CREATE TABLE public.tickets (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    event_id uuid,
-    user_id uuid,
+    event_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    payment_id uuid,
     quantity integer NOT NULL,
     total_price numeric(10,2) NOT NULL,
     status character varying(50) DEFAULT 'pending'::character varying,
-    payment_id character varying(255),
-    transaction_ref character varying(255),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -148,9 +154,11 @@ ALTER TABLE ONLY public.event_tags
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT follows_follower_followed_key UNIQUE (follower_id, followed_user_id);
 ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_user_id_event_id_key UNIQUE (user_id, event_id);
+    ADD CONSTRAINT follows_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.tags
     ADD CONSTRAINT tags_name_key UNIQUE (name);
 ALTER TABLE ONLY public.tags
@@ -168,13 +176,15 @@ CREATE INDEX idx_events_date ON public.events USING btree (event_date);
 CREATE INDEX idx_events_location ON public.events USING btree (latitude, longitude);
 CREATE INDEX idx_events_status ON public.events USING btree (status);
 CREATE INDEX idx_events_user ON public.events USING btree (user_id);
-CREATE INDEX idx_follows_event ON public.follows USING btree (event_id);
-CREATE INDEX idx_follows_user ON public.follows USING btree (user_id);
+CREATE INDEX idx_follows_followed ON public.follows USING btree (followed_user_id);
+CREATE INDEX idx_follows_follower ON public.follows USING btree (follower_id);
+CREATE INDEX idx_payments_user ON public.payments USING btree (user_id);
 CREATE INDEX idx_tickets_event ON public.tickets USING btree (event_id);
 CREATE INDEX idx_tickets_user ON public.tickets USING btree (user_id);
 CREATE TRIGGER increment_event_view AFTER INSERT ON public.tickets FOR EACH ROW EXECUTE FUNCTION public.increment_event_view_count();
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 ALTER TABLE ONLY public.bookmarks
     ADD CONSTRAINT bookmarks_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
@@ -191,10 +201,14 @@ ALTER TABLE ONLY public.events
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+    ADD CONSTRAINT follows_followed_user_id_fkey FOREIGN KEY (followed_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 ALTER TABLE ONLY public.tickets
     ADD CONSTRAINT tickets_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.tickets
+    ADD CONSTRAINT tickets_payment_id_fkey FOREIGN KEY (payment_id) REFERENCES public.payments(id) ON DELETE SET NULL;
 ALTER TABLE ONLY public.tickets
     ADD CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;

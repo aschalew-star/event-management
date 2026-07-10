@@ -30,7 +30,7 @@
               <div class="text-sm text-indigo-200">Upcoming</div>
             </div>
             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-              <div class="text-2xl font-bold">{{ stats.categories }}</div>
+              <div class="text-2xl font-bold">{{ categories.length }}</div>
               <div class="text-sm text-indigo-200">Categories</div>
             </div>
             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
@@ -171,7 +171,7 @@
       <div v-else-if="error" class="text-center py-12">
         <div class="text-6xl mb-4">😅</div>
         <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Oops! Something went wrong</h3>
-        <p class="text-gray-600 dark:text-gray-400">{{ error }}</p>
+        <p class="text-gray-600 dark:text-gray-400">{{ error.message || 'Failed to load events' }}</p>
         <button
           @click="fetchEvents"
           class="mt-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
@@ -185,8 +185,8 @@
         <!-- Results Count -->
         <div class="flex items-center justify-between mb-6">
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing {{ events.length }} events
-            <span v-if="totalEvents > events.length" class="text-gray-500 dark:text-gray-500">
+            Showing {{ enrichedEvents.length }} events
+            <span v-if="totalEvents > enrichedEvents.length" class="text-gray-500 dark:text-gray-500">
               ({{ totalEvents }} total)
             </span>
           </div>
@@ -202,7 +202,7 @@
         <!-- Grid/List View -->
         <div :class="[viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4']">
           <EventCard
-            v-for="event in events"
+            v-for="event in enrichedEvents"
             :key="event.id"
             :event="event"
             :view-mode="viewMode"
@@ -211,7 +211,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-if="events.length === 0" class="text-center py-16">
+        <div v-if="enrichedEvents.length === 0" class="text-center py-16">
           <div class="text-6xl mb-4">🎯</div>
           <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">No events found</h3>
           <p class="text-gray-600 dark:text-gray-400">Try adjusting your filters or search terms</p>
@@ -247,10 +247,11 @@
   </div>
 </template>
 
+<<!-- pages/events/index.vue - Updated Script Section -->
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
-import { GET_ALL_EVENTS, GET_EVENT_CATEGORIES } from '~/graphql/eventQueries';
+import { GET_ALL_EVENTS, GET_EVENT_CATEGORIES, GET_EVENT_IMAGES_BY_EVENT_IDS } from '~/graphql/eventQueries';
 import { useDebounce } from '~/composables/useDebounce';
 import { useRouter } from 'vue-router';
 import EventCard from '~/components/events/EventCard.vue';
@@ -275,7 +276,6 @@ const filters = reactive({
 const stats = reactive({
   totalEvents: 0,
   upcomingEvents: 0,
-  categories: 0,
   attendees: 2543,
 });
 
@@ -335,7 +335,7 @@ const buildOrderBy = () => {
   }
 };
 
-// Fetch Events
+// Fetch Events (without featured_image)
 const { result, loading, error, fetchMore, refetch } = useQuery(
   GET_ALL_EVENTS,
   () => ({
@@ -345,11 +345,6 @@ const { result, loading, error, fetchMore, refetch } = useQuery(
   }),
   {
     fetchPolicy: 'cache-and-network',
-    context: {
-      headers: {
-        'x-hasura-role': 'anonymous',
-      },
-    },
   }
 );
 
@@ -359,6 +354,83 @@ const { result: categoriesResult } = useQuery(GET_EVENT_CATEGORIES);
 const events = computed(() => result.value?.events || []);
 const totalEvents = computed(() => result.value?.events_aggregate?.aggregate?.count || 0);
 const categories = computed(() => categoriesResult.value?.categories || []);
+
+// Fetch images for all events
+const eventIds = computed(() => {
+  return events.value.map((e: any) => e.id);
+});
+
+// Only fetch images if there are events
+const shouldFetchImages = computed(() => {
+  return eventIds.value.length > 0;
+});
+
+const { result: imagesResult } = useQuery(
+  GET_EVENT_IMAGES_BY_EVENT_IDS,
+  () => ({
+    eventIds: eventIds.value,
+  }),
+  {
+    fetchPolicy: 'cache-and-network',
+    skip: () => !shouldFetchImages.value,
+  }
+);
+
+// Build image map for events - get the featured image
+const eventImageMap = computed(() => {
+  const map: Record<string, string> = {};
+  if (imagesResult.value?.event_images) {
+    imagesResult.value.event_images.forEach((img: any) => {
+      // Only set if not already set (first one will be featured due to order_by)
+      if (!map[img.event_id]) {
+        map[img.event_id] = img.image_url;
+      }
+    });
+  }
+  
+  console.log('🔍 Image Map:', map);
+  console.log('🔍 Images Result:', imagesResult.value);
+  console.log('🔍 Event IDs:', eventIds.value);
+  
+  return map;
+});
+
+// Build full images array for each event
+const eventAllImagesMap = computed(() => {
+  const map: Record<string, any[]> = {};
+  if (imagesResult.value?.event_images) {
+    imagesResult.value.event_images.forEach((img: any) => {
+      if (!map[img.event_id]) {
+        map[img.event_id] = [];
+      }
+      map[img.event_id].push({
+        url: img.image_url,
+        is_featured: img.is_featured,
+        id: img.id
+      });
+    });
+  }
+  return map;
+});
+
+// Enrich events with images
+const enrichedEvents = computed(() => {
+  const enriched = events.value.map((event: any) => {
+    const imageUrl = eventImageMap.value[event.id] || null;
+    const allImages = eventAllImagesMap.value[event.id] || [];
+    return {
+      ...event,
+      featured_image: imageUrl,
+      images: allImages,
+    };
+  });
+  
+  console.log('🔍 Enriched Events:', enriched);
+  console.log('🔍 First event image:', enriched[0]?.featured_image);
+  
+  return enriched;
+});
+
 const hasMore = computed(() => events.value.length < totalEvents.value);
 const activeFilters = computed(() => {
   let count = 0;
@@ -372,6 +444,7 @@ const filtersApplied = computed(() => activeFilters.value > 0);
 
 // Debounced Search
 const debounceSearch = useDebounce(() => {
+  currentPage.value = 1;
   refetch({
     filters: buildWhereClause(),
     limit: pageSize.value,
@@ -424,7 +497,6 @@ const loadMore = async () => {
 
 const toggleView = () => {
   viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
-  // Save preference
   localStorage.setItem('eventViewMode', viewMode.value);
 };
 
@@ -449,14 +521,10 @@ watch(
 
 // Lifecycle
 onMounted(() => {
-  // Load view preference
   const savedView = localStorage.getItem('eventViewMode');
   if (savedView === 'grid' || savedView === 'list') {
     viewMode.value = savedView;
   }
-  
-  // Update stats
-  stats.categories = categories.value.length;
 });
 </script>
 

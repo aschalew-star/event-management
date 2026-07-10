@@ -133,8 +133,9 @@
         >
           <!-- Image Section -->
           <div class="relative h-48 overflow-hidden">
+            <!-- Get featured image from event_images table -->
             <img
-              :src="event.featured_image || '/images/placeholder-event.jpg'"
+              :src="getFeaturedImage(event) || '/images/placeholder-event.jpg'"
               :alt="event.title"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               @error="handleImageError"
@@ -142,7 +143,7 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             
             <!-- Badges -->
-            <div class="absolute top-3 left-3 flex gap-2">
+            <div class="absolute top-3 left-3 flex gap-2 flex-wrap">
               <span
                 v-if="event.is_free"
                 class="px-2.5 py-1 bg-green-500/90 backdrop-blur-sm text-white rounded-full text-xs font-medium"
@@ -163,21 +164,24 @@
                 :class="statusColors[event.status] || 'bg-gray-500/90'"
               >
                 <Icon :name="event.status === 'published' ? 'lucide:check-circle' : 'lucide:file-text'" class="w-3 h-3 inline mr-1" />
-                {{ event.status.charAt(0).toUpperCase() + event.status.slice(1) }}
+                {{ formatStatus(event.status) }}
               </span>
             </div>
 
-            <!-- Date Badge -->
-            <div class="absolute bottom-3 left-3">
+            <!-- Date and Time Badge -->
+            <div class="absolute bottom-3 left-3 flex flex-col gap-1">
               <span class="text-white text-xs font-medium bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
                 <Icon name="lucide:calendar" class="w-3 h-3 inline mr-1" />
                 {{ formatDate(event.event_date) }}
+              </span>
+              <span v-if="event.start_time || event.end_time" class="text-white text-xs font-medium bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                <Icon name="lucide:clock" class="w-3 h-3 inline mr-1" />
+                {{ event.start_time || 'TBD' }} {{ event.end_time ? `- ${event.end_time}` : '' }}
               </span>
             </div>
 
             <!-- Action Buttons Overlay -->
             <div class="absolute top-3 right-3 flex gap-2">
-              <!-- View Button -->
               <NuxtLink
                 :to="`/events/${event.id}`"
                 class="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-blue-50 transition-colors shadow-lg"
@@ -186,7 +190,6 @@
                 <Icon name="lucide:eye" class="w-4 h-4 text-blue-600" />
               </NuxtLink>
               
-              <!-- Edit Button -->
               <button
                 @click.prevent="editEvent(event.id)"
                 class="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-purple-50 transition-colors shadow-lg"
@@ -195,7 +198,6 @@
                 <Icon name="lucide:edit-2" class="w-4 h-4 text-purple-600" />
               </button>
               
-              <!-- Delete Button -->
               <button
                 @click.prevent="confirmDelete(event)"
                 class="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-red-50 transition-colors shadow-lg"
@@ -208,6 +210,14 @@
 
           <!-- Content Section -->
           <div class="p-5">
+            <!-- Category Badge -->
+            <div v-if="event.category" class="mb-2">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                <Icon v-if="event.category.icon" :name="event.category.icon" class="w-3 h-3" />
+                {{ event.category.name }}
+              </span>
+            </div>
+
             <h3 class="font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
               {{ event.title }}
             </h3>
@@ -225,13 +235,17 @@
 
             <!-- Event Details -->
             <div class="space-y-1.5 mt-3 text-sm text-gray-500">
-              <div class="flex items-center gap-2">
+              <div v-if="event.venue || event.address" class="flex items-center gap-2">
                 <Icon name="lucide:map-pin" class="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <span class="line-clamp-1">{{ event.venue || 'Venue TBD' }}</span>
+                <span class="line-clamp-1">{{ event.venue || event.address || 'Venue TBD' }}</span>
               </div>
               <div class="flex items-center gap-2">
-                <Icon name="lucide:users" class="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <span>{{ event.follows_aggregate?.aggregate?.count || 0 }} followers</span>
+                <Icon name="lucide:bookmark" class="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span>{{ getBookmarkCount(event) }} bookmarks</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <Icon name="lucide:eye" class="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span>{{ event.view_count || 0 }} views</span>
               </div>
             </div>
 
@@ -251,7 +265,7 @@
                     : 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100'"
                 >
                   <Icon :name="event.status === 'published' ? 'lucide:check-circle' : 'lucide:file-text'" class="w-3 h-3" />
-                  {{ event.status === 'published' ? 'Published' : 'Draft' }}
+                  {{ formatStatus(event.status) }}
                 </button>
               </div>
             </div>
@@ -267,10 +281,7 @@
               class="w-20 h-20 text-gray-300 mx-auto mb-4" />
         <h3 class="text-2xl font-semibold text-gray-700 mb-2">No Events Found</h3>
         <p class="text-gray-500 mb-6 max-w-md mx-auto">
-          {{ activeTab === 'all' ? 'You haven\'t created any events yet.' : 
-             activeTab === 'published' ? 'You don\'t have any published events.' : 
-             activeTab === 'upcoming' ? 'You don\'t have any upcoming events.' :
-             'You don\'t have any draft events.' }}
+          {{ getEmptyStateMessage() }}
         </p>
         <NuxtLink
           to="/events/create"
@@ -285,10 +296,8 @@
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
       <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
-        <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
         
-        <!-- Modal -->
         <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
           <div class="text-center">
             <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -302,7 +311,7 @@
               "{{ eventToDelete?.title || 'Untitled Event' }}"
             </p>
             <p class="text-sm text-red-500 mb-6">
-              ⚠️ This action cannot be undone.
+              ⚠️ This will also delete all associated images, bookmarks, and tickets.
             </p>
             <div class="flex gap-3">
               <button
@@ -435,6 +444,34 @@ const filteredEvents = computed(() => {
   }
 })
 
+// Helper functions
+const getFeaturedImage = (event: any) => {
+  if (event.event_images && event.event_images.length > 0) {
+    const featured = event.event_images.find((img: any) => img.is_featured)
+    return featured?.image_url || event.event_images[0]?.image_url
+  }
+  return null
+}
+
+const getBookmarkCount = (event: any) => {
+  return event.bookmarks_aggregate?.aggregate?.count || 0
+}
+
+const formatStatus = (status: string) => {
+  if (!status) return 'Draft'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const getEmptyStateMessage = () => {
+  switch (activeTab.value) {
+    case 'all': return 'You haven\'t created any events yet.'
+    case 'published': return 'You don\'t have any published events.'
+    case 'upcoming': return 'You don\'t have any upcoming events.'
+    case 'draft': return 'You don\'t have any draft events.'
+    default: return 'No events found.'
+  }
+}
+
 // Mutations
 const { mutate: deleteEventMutation } = useMutation(DELETE_EVENT)
 const { mutate: updateEventStatusMutation } = useMutation(UPDATE_EVENT_STATUS)
@@ -471,9 +508,7 @@ const deleteEvent = async () => {
     
     console.log('Delete result:', result)
     
-    // Check if deletion was successful
     if (result?.data?.delete_events_by_pk?.id) {
-      // Refetch the list
       await refetch()
       toast.success(`Event "${eventToDelete.value.title}" deleted successfully`)
       closeDeleteModal()
@@ -516,10 +551,8 @@ const handleImageError = (event: Event) => {
 
 const statusColors: Record<string, string> = {
   published: 'bg-green-500/90',
-  upcoming: 'bg-blue-500/90',
-  completed: 'bg-gray-500/90',
-  cancelled: 'bg-red-500/90',
   draft: 'bg-yellow-500/90',
+  cancelled: 'bg-red-500/90',
 }
 
 const formatDate = (date: string) => {

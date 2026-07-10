@@ -1,5 +1,3 @@
-// graphql/userQueries.ts
-
 import gql from 'graphql-tag';
 
 export const GET_USER_PROFILE = gql`
@@ -10,8 +8,6 @@ export const GET_USER_PROFILE = gql`
       email
       avatar_url
       bio
-      location
-      website
       created_at
       events_aggregate {
         aggregate {

@@ -2,77 +2,49 @@ table:
   name: follows
   schema: public
 object_relationships:
-  - name: event
-    using:
-      foreign_key_constraint_on: event_id
   - name: user
     using:
-      foreign_key_constraint_on: user_id
+      foreign_key_constraint_on: followed_user_id
+  - name: userByFollowerId
+    using:
+      foreign_key_constraint_on: follower_id
 insert_permissions:
-    - role: anonymous
-      permission:
-        check: {}
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-      comment: "Allow anonymous users to insert follows"
-    - role: user
-      permission:
-        check: {}
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-      comment: "Allow authenticated users to insert follows"
+  - role: user
+    permission:
+      check: {}
+      set:
+        follower_id: x-hasura-User-Id
+      columns:
+        - created_at
+        - followed_user_id
+        - id
+    comment: ""
 select_permissions:
-    - role: anonymous
-      permission:
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-        filter: {}
-      comment: "Allow anonymous users to select follows"
-    - role: user
-      permission:
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-        filter: {}
-      comment: "Allow authenticated users to select follows"
-update_permissions:
-    - role: anonymous
-      permission:
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-        filter: {}
-        check: null
-      comment: "Allow anonymous users to update follows"
-    - role: user
-      permission:
-        columns:
-          - id
-          - user_id
-          - event_id
-          - created_at
-        filter: {}
-        check: null
-      comment: "Allow authenticated users to update follows"
+  - role: anonymous
+    permission:
+      columns: []
+      filter: {}
+      allow_aggregations: true
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - created_at
+        - followed_user_id
+        - follower_id
+        - id
+      filter:
+        _or:
+          - follower_id:
+              _eq: X-Hasura-User-Id
+          - followed_user_id:
+              _eq: X-Hasura-User-Id
+      allow_aggregations: true
+    comment: ""
 delete_permissions:
-    - role: anonymous
-      permission:
-        filter: {}
-      comment: "Allow anonymous users to delete follows"
-    - role: user
-      permission:
-        filter: {}
-      comment: "Allow authenticated users to delete follows"
+  - role: user
+    permission:
+      filter:
+        follower_id:
+          _eq: X-Hasura-User-Id
+    comment: ""

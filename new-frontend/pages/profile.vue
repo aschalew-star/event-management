@@ -1,12 +1,10 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Loading State -->
       <div v-if="loading" class="flex justify-center py-16">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
         <Icon name="lucide:alert-circle" class="w-20 h-20 text-red-400 mx-auto mb-4" />
         <h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">Failed to Load Profile</h3>
@@ -20,23 +18,25 @@
         </button>
       </div>
 
-      <!-- Profile Content -->
       <div v-else-if="profile" class="space-y-6">
-        <!-- Profile Header -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-          <!-- Cover Image -->
           <div class="relative h-48 md:h-64 bg-gradient-to-r from-blue-500 to-purple-600">
             <div class="absolute inset-0 bg-black/20"></div>
             <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/60 to-transparent">
               <div class="flex flex-col md:flex-row items-start md:items-end gap-4">
-                <!-- Avatar -->
                 <div class="relative -mb-12 md:-mb-16">
                   <img
-                    :src="profile.avatar_url || '/images/default-avatar.jpg'"
+                    v-if="profile.avatar_url"
+                    :src="profile.avatar_url"
                     :alt="profile.name"
                     class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-xl"
-                    @error="handleAvatarError"
                   />
+                  <div
+                    v-else
+                    class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-xl text-gray-600 dark:text-gray-300 font-bold text-2xl md:text-4xl uppercase"
+                  >
+                    {{ profile.name ? profile.name.charAt(0) : 'U' }}
+                  </div>
                   <button
                     @click="triggerAvatarUpload"
                     class="absolute bottom-0 right-0 p-1.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white shadow-lg transition-colors"
@@ -53,7 +53,6 @@
                   />
                 </div>
 
-                <!-- User Info -->
                 <div class="flex-1 text-white md:pb-2">
                   <h1 class="text-2xl md:text-3xl font-bold">{{ profile.name }}</h1>
                   <p class="text-sm md:text-base text-white/80">{{ profile.email }}</p>
@@ -62,14 +61,9 @@
                       <Icon name="lucide:calendar" class="w-4 h-4" />
                       Joined {{ formatDate(profile.created_at) }}
                     </span>
-                    <span class="flex items-center gap-1">
-                      <Icon name="lucide:map-pin" class="w-4 h-4" />
-                      {{ profile.location || 'Location not set' }}
-                    </span>
                   </div>
                 </div>
 
-                <!-- Edit Button -->
                 <button
                   @click="isEditing = !isEditing"
                   class="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-colors text-sm font-medium"
@@ -82,7 +76,6 @@
           </div>
         </div>
 
-        <!-- Stats Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
@@ -130,7 +123,6 @@
           </div>
         </div>
 
-        <!-- Edit Profile Form -->
         <div v-if="isEditing" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Profile</h3>
           <form @submit.prevent="updateProfile" class="space-y-4">
@@ -150,24 +142,6 @@
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Tell us about yourself..."
               ></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
-              <input
-                v-model="editForm.location"
-                type="text"
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="City, Country"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
-              <input
-                v-model="editForm.website"
-                type="url"
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://yourwebsite.com"
-              />
             </div>
             <div class="flex gap-3 pt-2">
               <button
@@ -189,14 +163,13 @@
           </form>
         </div>
 
-        <!-- Recent Activity -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
           <div v-if="recentActivity.length === 0" class="text-center py-8">
             <Icon name="lucide:activity" class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p class="text-gray-500 dark:text-gray-400">No recent activity</p>
           </div>
-          <div v-else class="space-y-3">
+          <div class="space-y-3">
             <div
               v-for="activity in recentActivity"
               :key="activity.id"
@@ -220,7 +193,6 @@
           </div>
         </div>
 
-        <!-- Quick Actions -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <NuxtLink
             to="/my-events"
@@ -275,12 +247,10 @@ const isEditing = ref(false);
 const updating = ref(false);
 const avatarInput = ref<HTMLInputElement | null>(null);
 
-// Edit form
+// Form containing only matching db text columns
 const editForm = ref({
   name: '',
   bio: '',
-  location: '',
-  website: '',
 });
 
 // Fetch user profile
@@ -310,28 +280,23 @@ onError((error) => {
 const profile = computed(() => {
   const user = profileResult.value?.users_by_pk;
   if (user) {
-    // Populate edit form when profile loads
     if (!isEditing.value) {
       editForm.value = {
         name: user.name || '',
         bio: user.bio || '',
-        location: user.location || '',
-        website: user.website || '',
       };
     }
   }
   return user;
 });
 
-// Stats
 const stats = computed(() => ({
   totalEvents: profile.value?.events_aggregate?.aggregate?.count || 0,
   totalBookmarks: profile.value?.bookmarks_aggregate?.aggregate?.count || 0,
   totalFollowing: profile.value?.follows_aggregate?.aggregate?.count || 0,
-  totalFollowers: 0, // Will be fetched separately
+  totalFollowers: 0,
 }));
 
-// Recent activity
 const recentActivity = computed(() => {
   const activities = [];
   const user = profile.value;
@@ -360,17 +325,14 @@ const recentActivity = computed(() => {
     });
   }
   
-  // Sort by date and limit to 5
   return activities
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 });
 
-// Mutations
 const { mutate: updateProfileMutation } = useMutation(UPDATE_USER_PROFILE);
 const { mutate: updateAvatarMutation } = useMutation(UPDATE_USER_AVATAR);
 
-// Update profile
 const updateProfile = async () => {
   try {
     updating.value = true;
@@ -391,7 +353,6 @@ const updateProfile = async () => {
   }
 };
 
-// Avatar upload
 const triggerAvatarUpload = () => {
   avatarInput.value?.click();
 };
@@ -402,7 +363,6 @@ const handleAvatarUpload = async (event: Event) => {
   
   if (!file) return;
   
-  // Validate file
   if (file.size > 5 * 1024 * 1024) {
     toast.error('Image size must be less than 5MB');
     return;
@@ -415,7 +375,6 @@ const handleAvatarUpload = async (event: Event) => {
   }
   
   try {
-    // Convert to base64
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -433,12 +392,6 @@ const handleAvatarUpload = async (event: Event) => {
     console.error('Error uploading avatar:', error);
     toast.error(error.message || 'Failed to upload avatar');
   }
-};
-
-// Helper functions
-const handleAvatarError = (event: Event) => {
-  const img = event.target as HTMLImageElement;
-  img.src = '/images/default-avatar.jpg';
 };
 
 const getActivityIcon = (type: string) => {
@@ -475,14 +428,9 @@ const formatRelativeTime = (date: string) => {
   return formatDate(date);
 };
 
-// Refetch on mount
 onMounted(async () => {
   if (authStore.isAuthenticated && authStore.user?.id) {
     await refetch();
   }
 });
 </script>
-
-<style scoped>
-/* Add any custom styles here */
-</style>

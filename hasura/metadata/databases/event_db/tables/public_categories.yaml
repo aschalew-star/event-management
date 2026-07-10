@@ -9,31 +9,6 @@ array_relationships:
         table:
           name: events
           schema: public
-insert_permissions:
-  - role: anonymous
-    permission:
-      check: {}
-      columns:
-        - color
-        - icon
-        - name
-        - description
-        - created_at
-        - updated_at
-        - id
-    comment: ""
-  - role: user
-    permission:
-      check: {}
-      columns:
-        - color
-        - icon
-        - name
-        - description
-        - created_at
-        - updated_at
-        - id
-    comment: ""
 select_permissions:
   - role: anonymous
     permission:

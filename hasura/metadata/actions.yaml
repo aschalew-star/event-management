@@ -5,7 +5,6 @@ actions:
       handler: http://172.17.0.1:4000/api/events
       forward_client_headers: true
     permissions:
-      - role: anonymous
       - role: user
   - name: loginUser
     definition:
@@ -14,6 +13,13 @@ actions:
       forward_client_headers: true
     permissions:
       - role: anonymous
+  - name: processChapaPayment
+    definition:
+      kind: synchronous
+      handler: http://172.17.0.1:4000/api/payment/initialize
+      forward_client_headers: true
+    permissions:
+      - role: user
   - name: registerUser
     definition:
       kind: synchronous
@@ -28,14 +34,6 @@ actions:
       forward_client_headers: true
     permissions:
       - role: user
-  - name: processChapaPayment
-    definition:
-      kind: synchronous
-      handler: http://172.17.0.1:4000/api/payment/initialize
-      forward_client_headers: true
-    permissions:
-      - role: user
-      - role: anonymous
   - name: verifyChapaPayment
     definition:
       kind: synchronous

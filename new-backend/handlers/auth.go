@@ -1,3 +1,4 @@
+// handlers/auth.go
 package handlers
 
 import (
@@ -39,12 +40,12 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// ============================================
-// REGISTER HANDLER
-// ============================================
-// ============================================
-// REGISTER HANDLER - WITH HARDENED LOGGING
-// ============================================
+type UserResponse struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
 
 func Register(c *gin.Context) {
 	var payload HasuraRegisterPayload
@@ -66,17 +67,24 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	var checkQuery struct {
+	// Check if user exists using QueryRaw
+	checkQuery := `query CheckUser($email: String!) {
+users(where: { email: { _eq: $email } }, limit: 1) {
+id
+email
+}
+}`
+
+	var checkResp struct {
 		Users []struct {
-			ID    string `graphql:"id"`
-			Email string `graphql:"email"`
-		} `graphql:"users(where:{email:{_eq:$email}},limit:1)"`
+			ID    string `json:"id"`
+			Email string `json:"email"`
+		} `json:"users"`
 	}
 
-	// Explicitly named error check to prevent tracking cross-contamination
-	checkErr := graphql.Query(c.Request.Context(), &checkQuery, map[string]interface{}{
+	checkErr := graphql.QueryRaw(c.Request.Context(), checkQuery, map[string]interface{}{
 		"email": input.Email,
-	})
+	}, &checkResp)
 
 	if checkErr != nil {
 		fmt.Println("LOGGING ERROR - REGISTER LOOKUP FAILED:", checkErr.Error())
@@ -86,29 +94,40 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if len(checkQuery.Users) > 0 {
+	if len(checkResp.Users) > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "An account with this email already exists",
 		})
 		return
 	}
 
-	var mutation struct {
+	// Create user using MutateRaw
+	createMutation := `mutation CreateUser($email: String!, $password: String!, $name: String!, $role: String!) {
+insert_users_one(object: { email: $email, password: $password, name: $name, role: $role }) {
+id
+email
+name
+role
+created_at
+}
+}`
+
+	var createResp struct {
 		InsertUsersOne struct {
-			ID        string `graphql:"id"`
-			Email     string `graphql:"email"`
-			Name      string `graphql:"name"`
-			Role      string `graphql:"role"`
-			CreatedAt string `graphql:"created_at"`
-		} `graphql:"insert_users_one(object:{email:$email,password:$password,name:$name,role:$role})"`
+			ID        string `json:"id"`
+			Email     string `json:"email"`
+			Name      string `json:"name"`
+			Role      string `json:"role"`
+			CreatedAt string `json:"created_at"`
+		} `json:"insert_users_one"`
 	}
 
-	mutateErr := graphql.Mutate(c.Request.Context(), &mutation, map[string]interface{}{
+	mutateErr := graphql.MutateRaw(c.Request.Context(), createMutation, map[string]interface{}{
 		"email":    input.Email,
 		"password": string(hashedPassword),
 		"name":     input.Name,
 		"role":     "user",
-	})
+	}, &createResp)
 
 	if mutateErr != nil {
 		fmt.Println("LOGGING ERROR - REGISTER MUTATION WRITE FAILED:", mutateErr.Error())
@@ -119,9 +138,9 @@ func Register(c *gin.Context) {
 	}
 
 	token, err := utils.GenerateToken(
-		mutation.InsertUsersOne.ID,
-		mutation.InsertUsersOne.Email,
-		mutation.InsertUsersOne.Role,
+		createResp.InsertUsersOne.ID,
+		createResp.InsertUsersOne.Email,
+		createResp.InsertUsersOne.Role,
 	)
 
 	if err != nil {
@@ -133,17 +152,12 @@ func Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_id": mutation.InsertUsersOne.ID,
+		"user_id": createResp.InsertUsersOne.ID,
 		"token":   token,
 		"message": "User registered successfully",
 	})
 }
 
-// ============================================
-// LOGIN HANDLER
-// ============================================
-// ============================================
-// LOGIN HANDLER - ROBUST & EXPLICIT LOGGING
 // ============================================
 
 func Login(c *gin.Context) {
@@ -160,26 +174,33 @@ func Login(c *gin.Context) {
 
 	input := payload.Input.Input
 
-	// 2. Query user from database
-	var query struct {
+	// 2. Query user from database using QueryRaw
+	getUserQuery := `query GetUser($email: String!) {
+users(where: { email: { _eq: $email } }, limit: 1) {
+id
+email
+name
+role
+password
+}
+}`
+
+	var getUserResp struct {
 		Users []struct {
-			ID       string `graphql:"id"`
-			Email    string `graphql:"email"`
-			Name     string `graphql:"name"`
-			Role     string `graphql:"role"`
-			Password string `graphql:"password"`
-		} `graphql:"users(where:{email:{_eq:$email}},limit:1)"`
+			ID       string `json:"id"`
+			Email    string `json:"email"`
+			Name     string `json:"name"`
+			Role     string `json:"role"`
+			Password string `json:"password"`
+		} `json:"users"`
 	}
 
-	// Explicitly using a separate err variable name to avoid scoping overlaps
-	queryErr := graphql.Query(c.Request.Context(), &query, map[string]interface{}{
+	queryErr := graphql.QueryRaw(c.Request.Context(), getUserQuery, map[string]interface{}{
 		"email": input.Email,
-	})
+	}, &getUserResp)
 
 	if queryErr != nil {
-		// Look at your Go terminal output when you execute the login!
 		fmt.Println("LOGGING ERROR - HASURA GRAPHQL QUERY FAILED:", queryErr.Error())
-
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database query connection failed: " + queryErr.Error(),
 		})
@@ -187,14 +208,14 @@ func Login(c *gin.Context) {
 	}
 
 	// 3. Check if user exists
-	if len(query.Users) == 0 {
+	if len(getUserResp.Users) == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "Email or password is incorrect",
 		})
 		return
 	}
 
-	user := query.Users[0]
+	user := getUserResp.Users[0]
 
 	// 4. Compare password
 	if err := bcrypt.CompareHashAndPassword(
@@ -235,39 +256,40 @@ func Login(c *gin.Context) {
 // ============================================
 
 func GetUserByID(ctx context.Context, userID string) (*UserResponse, error) {
-	var query struct {
-		Users []struct {
-			ID    string `graphql:"id"`
-			Name  string `graphql:"name"`
-			Email string `graphql:"email"`
-			Role  string `graphql:"role"`
-		} `graphql:"users(where:{id:{_eq:$id}},limit:1)"`
+	getUserQuery := `query GetUserByID($id: uuid!) {
+users_by_pk(id: $id) {
+id
+name
+email
+role
+}
+}`
+
+	var getUserResp struct {
+		UsersByPk struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Email string `json:"email"`
+			Role  string `json:"role"`
+		} `json:"users_by_pk"`
 	}
 
-	err := graphql.Query(ctx, &query, map[string]interface{}{
+	err := graphql.QueryRaw(ctx, getUserQuery, map[string]interface{}{
 		"id": userID,
-	})
+	}, &getUserResp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(query.Users) == 0 {
+	if getUserResp.UsersByPk.ID == "" {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	user := query.Users[0]
 	return &UserResponse{
-		ID:    user.ID,
-		Name:  user.Name,
-		Email: user.Email,
-		Role:  user.Role,
+		ID:    getUserResp.UsersByPk.ID,
+		Name:  getUserResp.UsersByPk.Name,
+		Email: getUserResp.UsersByPk.Email,
+		Role:  getUserResp.UsersByPk.Role,
 	}, nil
-}
-
-type UserResponse struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
 }

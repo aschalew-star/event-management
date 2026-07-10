@@ -1,24 +1,9 @@
-import { gql } from 'graphql-tag'
+
+import { gql } from '@apollo/client/core'
 
 export const PROCESS_CHAPA_PAYMENT = gql`
-  mutation ProcessChapaPayment(
-    $eventId: String!
-    $quantity: Int!
-    $email: String!
-    $phone: String!
-    $firstName: String!
-    $lastName: String!
-  ) {
-    processChapaPayment(
-      input: {
-        eventId: $eventId
-        quantity: $quantity
-        email: $email
-        phone: $phone
-        firstName: $firstName
-        lastName: $lastName
-      }
-    ) {
+  mutation ProcessChapaPayment($input: ProcessChapaPaymentInput!) {
+    processChapaPayment(input: $input) {
       success
       message
       data {
@@ -30,8 +15,8 @@ export const PROCESS_CHAPA_PAYMENT = gql`
 `
 
 export const VERIFY_CHAPA_PAYMENT = gql`
-  mutation VerifyChapaPayment($transactionRef: String!) {
-    verifyChapaPayment(input: { transactionRef: $transactionRef }) {
+  mutation VerifyChapaPayment($input: VerifyChapaPaymentInput!) {
+    verifyChapaPayment(input: $input) {
       success
       message
       status

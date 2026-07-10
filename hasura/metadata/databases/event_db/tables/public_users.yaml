@@ -19,9 +19,23 @@ array_relationships:
   - name: follows
     using:
       foreign_key_constraint_on:
-        column: user_id
+        column: followed_user_id
         table:
           name: follows
+          schema: public
+  - name: followsByFollowerId
+    using:
+      foreign_key_constraint_on:
+        column: follower_id
+        table:
+          name: follows
+          schema: public
+  - name: payments
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: payments
           schema: public
   - name: tickets
     using:
@@ -30,83 +44,36 @@ array_relationships:
         table:
           name: tickets
           schema: public
-insert_permissions:
-  - role: anonymous
-    permission:
-      check: {}
-      columns:
-        - avatar_url
-        - email
-        - name
-        - password
-        - role
-        - bio
-        - created_at
-        - updated_at
-        - id
-    comment: ""
-  - role: user
-    permission:
-      check: {}
-      columns:
-        - avatar_url
-        - email
-        - name
-        - password
-        - role
-        - bio
-        - created_at
-        - updated_at
-        - id
-    comment: ""
 select_permissions:
   - role: anonymous
     permission:
-      columns: 
+      columns:
         - avatar_url
-        - email
-        - name
-        - password
-        - role
         - bio
         - created_at
-        - updated_at
         - id
+        - name
+        - updated_at
       filter: {}
     comment: ""
   - role: user
     permission:
       columns:
         - avatar_url
+        - bio
+        - created_at
         - email
+        - id
         - name
         - password
         - role
-        - bio
-        - created_at
         - updated_at
-        - id
       filter: {}
+      allow_aggregations: true
     comment: ""
 update_permissions:
   - role: anonymous
     permission:
-      check: {}
-      columns:
-        - avatar_url
-        - email
-        - name
-        - password
-        - role
-        - bio
-        - created_at  
-        - updated_at
-        - id
-      filter: {}
-    comment: ""
-  - role: user
-    permission:
-      check: {}
       columns:
         - avatar_url
         - email
@@ -117,5 +84,27 @@ update_permissions:
         - created_at
         - updated_at
         - id
-      filter: {}
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
+      check: null
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - avatar_url
+        - email
+        - name
+        - password
+        - role
+        - bio
+        - created_at
+        - updated_at
+        - id
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
+      check: null
+      set:
+        id: x-hasura-User-Id
     comment: ""

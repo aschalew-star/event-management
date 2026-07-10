@@ -1,23 +1,14 @@
-// graphql/userMutations.ts
-
 import gql from 'graphql-tag';
 
 export const UPDATE_USER_PROFILE = gql`
-  mutation UpdateUserProfile($id: uuid!, $input: UserProfileInput!) {
+  mutation UpdateUserProfile($id: uuid!, $input: users_set_input!) {
     update_users_by_pk(
       pk_columns: { id: $id }
-      _set: {
-        name: $input.name
-        bio: $input.bio
-        location: $input.location
-        website: $input.website
-      }
+      _set: $input
     ) {
       id
       name
       bio
-      location
-      website
     }
   }
 `;

@@ -1,0 +1,32 @@
+table:
+  name: payments
+  schema: public
+object_relationships:
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
+array_relationships:
+  - name: tickets
+    using:
+      foreign_key_constraint_on:
+        column: payment_id
+        table:
+          name: tickets
+          schema: public
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - currency
+        - payment_method
+        - status
+        - transaction_ref
+        - amount
+        - created_at
+        - updated_at
+        - id
+        - user_id
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+    comment: ""

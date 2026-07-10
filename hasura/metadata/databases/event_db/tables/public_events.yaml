@@ -30,13 +30,6 @@ array_relationships:
         table:
           name: event_tags
           schema: public
-  - name: follows
-    using:
-      foreign_key_constraint_on:
-        column: event_id
-        table:
-          name: follows
-          schema: public
   - name: tickets
     using:
       foreign_key_constraint_on:
@@ -45,78 +38,54 @@ array_relationships:
           name: tickets
           schema: public
 insert_permissions:
-  - role: anonymous
-    permission:
-      check: {}
-      columns:
-        - is_free
-        - end_time
-        - featured_image
-        - start_time
-        - status
-        - title
-        - venue
-        - view_count
-        - latitude
-        - longitude
-        - price
-        - address
-        - description
-        - created_at
-        - event_date
-        - updated_at
-        - category_id
-        - id
-        - user_id
-    comment: ""
   - role: user
     permission:
       check: {}
+      set:
+        user_id: x-hasura-User-Id
       columns:
-        - is_free
+        - address
+        - category_id
+        - created_at
+        - description
         - end_time
-        - featured_image
-        - start_time
-        - status
-        - title
-        - venue
-        - view_count
+        - event_date
+        - id
+        - is_free
         - latitude
         - longitude
         - price
-        - address
-        - description
-        - created_at
-        - event_date
+        - start_time
+        - status
+        - title
         - updated_at
-        - category_id
-        - id
-        - user_id
+        - venue
+        - view_count
     comment: ""
 select_permissions:
   - role: anonymous
     permission:
       columns:
-        - is_free
+        - address
+        - category_id
+        - created_at
+        - description
         - end_time
-        - featured_image
-        - start_time
-        - status
-        - title
-        - venue
-        - view_count
+        - event_date
+        - id
+        - is_free
         - latitude
         - longitude
         - price
-        - address
-        - description
-        - created_at
-        - event_date
+        - start_time
+        - status
+        - title
         - updated_at
-        - category_id
-        - id
-        - user_id
-      filter: {}
+        - venue
+        - view_count
+      filter:
+        status:
+          _eq: published
       allow_aggregations: true
     comment: ""
   - role: user
@@ -124,7 +93,6 @@ select_permissions:
       columns:
         - is_free
         - end_time
-        - featured_image
         - start_time
         - status
         - title
@@ -141,7 +109,46 @@ select_permissions:
         - category_id
         - id
         - user_id
-      filter: {}
+      filter:
+        _or:
+          - user_id:
+              _eq: X-Hasura-User-Id
+          - status:
+              _eq: published
       allow_aggregations: true
     comment: ""
-
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - address
+        - category_id
+        - created_at
+        - description
+        - end_time
+        - event_date
+        - id
+        - is_free
+        - latitude
+        - longitude
+        - price
+        - start_time
+        - status
+        - title
+        - updated_at
+        - venue
+        - view_count
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check: null
+      set:
+        user_id: x-hasura-User-Id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+    comment: ""

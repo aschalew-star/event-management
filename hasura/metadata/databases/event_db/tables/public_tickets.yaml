@@ -5,110 +5,45 @@ object_relationships:
   - name: event
     using:
       foreign_key_constraint_on: event_id
+  - name: payment
+    using:
+      foreign_key_constraint_on: payment_id
   - name: user
     using:
       foreign_key_constraint_on: user_id
 insert_permissions:
-    - role: anonymous
-      permission:
-        check: {}
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-      comment: "Allow anonymous users to insert tickets"
-    - role: user
-      permission:
-        check: {}
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-      comment: "Allow authenticated users to insert tickets"
+  - role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: x-hasura-User-Id
+      columns:
+        - created_at
+        - event_id
+        - id
+        - payment_id
+        - quantity
+        - status
+        - total_price
+        - updated_at
+    comment: ""
 select_permissions:
-    - role: anonymous
-      permission:
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-        filter: {}
-      comment: "Allow anonymous users to select tickets"
-    - role: user
-      permission:
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-        filter: {}
-      comment: "Allow authenticated users to select tickets"
-update_permissions:
-    - role: anonymous
-      permission:
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-        filter: {}
-        check: null
-      comment: "Allow anonymous users to update tickets"
-    - role: user
-      permission:
-        columns:
-          - id
-          - event_id
-          - user_id
-          - quantity
-          - total_price
-          - status
-          - payment_id
-          - transaction_ref
-          - created_at
-          - updated_at
-        filter: {}
-        check: null
-      comment: "Allow authenticated users to update tickets"
-delete_permissions:
-    - role: anonymous
-      permission:
-        filter: {}
-      comment: "Allow anonymous users to delete tickets"
-    - role: user
-      permission:
-        filter: {}
-      comment: "Allow authenticated users to delete tickets"
+  - role: user
+    permission:
+      columns:
+        - status
+        - quantity
+        - total_price
+        - created_at
+        - updated_at
+        - event_id
+        - id
+        - payment_id
+        - user_id
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      allow_aggregations: true
+    comment: ""

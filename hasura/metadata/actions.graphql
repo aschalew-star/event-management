@@ -1,13 +1,39 @@
 type Mutation {
-  createEvent(input: CreateEventInput!): EventResponse
-  loginUser(input: LoginUserInput!): AuthResponse
-  registerUser(input: RegisterUserInput!): AuthResponse
-  uploadEventImages(event_id: uuid!, images: [String!]!): UploadResponse
-  processChapaPayment(input: ProcessChapaPaymentInput!): ProcessChapaPaymentResponse
-  verifyChapaPayment(input: VerifyChapaPaymentInput!): VerifyChapaPaymentResponse
+  createEvent(
+    input: CreateEventInput!
+  ): EventResponse
 }
 
-# --- Core Inputs (Untouched) ---
+type Mutation {
+  loginUser(
+    input: LoginUserInput!
+  ): AuthResponse
+}
+
+type Mutation {
+  processChapaPayment(
+    input: ProcessChapaPaymentInput!
+  ): ProcessChapaPaymentResponse
+}
+
+type Mutation {
+  registerUser(
+    input: RegisterUserInput!
+  ): AuthResponse
+}
+
+type Mutation {
+  uploadEventImages(
+    event_id: uuid!
+    images: [String!]!
+  ): UploadResponse
+}
+
+type Mutation {
+  verifyChapaPayment(
+    input: VerifyChapaPaymentInput!
+  ): VerifyChapaPaymentResponse
+}
 
 input RegisterUserInput {
   name: String!
@@ -35,10 +61,9 @@ input CreateEventInput {
   end_time: String
   status: String
   featured_image: String
+  images: [String!]!
   tags: [String!]
 }
-
-# --- Fixed Chapa Payment Inputs ---
 
 input ProcessChapaPaymentInput {
   eventId: String!
@@ -52,8 +77,6 @@ input ProcessChapaPaymentInput {
 input VerifyChapaPaymentInput {
   transactionRef: String!
 }
-
-# --- Core Responses (Untouched) ---
 
 type AuthResponse {
   token: String!
@@ -73,8 +96,6 @@ type UploadResponse {
   message: String!
   urls: [String!]!
 }
-
-# --- Fixed Chapa Payment Responses ---
 
 type ProcessChapaPaymentResponse {
   success: Boolean!
@@ -101,3 +122,4 @@ type TicketData {
   total_price: Float!
   status: String!
 }
+

@@ -8,63 +8,74 @@
         </h2>
       </div>
 
-      <form @submit.prevent="handleRegister" class="space-y-6">
+      <VeeForm @submit="handleRegister" class="space-y-6" v-slot="{ errors }">
 
         <!-- NAME -->
         <div>
-          <input
+          <VeeField
+            name="name"
             v-model="form.name"
             placeholder="Full Name"
             class="w-full px-3 py-2 border rounded"
-            @blur="validateField('name')"
+            rules="required"
           />
-          <p v-if="errors.name" class="text-red-500 text-sm">{{ errors.name }}</p>
+          <VeeErrorMessage name="name" class="text-red-500 text-sm" />
         </div>
 
         <!-- EMAIL -->
         <div>
-          <input
+          <VeeField
+            name="email"
             v-model="form.email"
             placeholder="Email"
             type="email"
             class="w-full px-3 py-2 border rounded"
-            @blur="validateField('email')"
+            rules="required|email"
           />
-          <p v-if="errors.email" class="text-red-500 text-sm">{{ errors.email }}</p>
+          <VeeErrorMessage name="email" class="text-red-500 text-sm" />
         </div>
 
         <!-- PASSWORD -->
         <div>
-          <input
+          <VeeField
+            name="password"
             v-model="form.password"
             placeholder="Password"
             type="password"
             class="w-full px-3 py-2 border rounded"
-            @blur="validateField('password')"
+            rules="required|min:6"
           />
-          <p v-if="errors.password" class="text-red-500 text-sm">{{ errors.password }}</p>
+          <VeeErrorMessage name="password" class="text-red-500 text-sm" />
         </div>
 
         <!-- CONFIRM PASSWORD -->
         <div>
-          <input
+          <VeeField
+            name="password_confirmation"
             v-model="form.password_confirmation"
             placeholder="Confirm Password"
             type="password"
             class="w-full px-3 py-2 border rounded"
-            @blur="validateField('password_confirmation')"
+            rules="required|confirmed:@password"
           />
-          <p v-if="errors.password_confirmation" class="text-red-500 text-sm">
-            {{ errors.password_confirmation }}
-          </p>
+          <VeeErrorMessage name="password_confirmation" class="text-red-500 text-sm" />
         </div>
 
         <!-- TERMS -->
-        <label class="flex items-center gap-2">
-          <input type="checkbox" v-model="form.terms" />
-          <span>I agree to terms</span>
-        </label>
-        <p v-if="errors.terms" class="text-red-500 text-sm">{{ errors.terms }}</p>
+        <div>
+          <label class="flex items-center gap-2">
+            <VeeField
+              name="terms"
+              v-model="form.terms"
+              type="checkbox"
+              rules="required"
+              :value="true"
+              :unchecked-value="false"
+            />
+            <span>I agree to terms</span>
+          </label>
+          <VeeErrorMessage name="terms" class="text-red-500 text-sm" />
+        </div>
 
         <!-- BUTTON (ALWAYS VISIBLE) -->
         <button
@@ -75,13 +86,13 @@
           {{ loading ? 'Creating...' : 'Create Account' }}
         </button>
 
-      </form>
+      </VeeForm>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -100,64 +111,8 @@ const form = reactive({
   terms: false
 })
 
-const errors = reactive({
-  name: '',
-  email: '',
-  password: '',
-  password_confirmation: '',
-  terms: ''
-})
-
-// ---------------- VALIDATION ----------------
-const validateField = (field) => {
-  if (field === 'name') {
-    errors.name = form.name ? '' : 'Name required'
-  }
-
-  if (field === 'email') {
-    errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
-      ? ''
-      : 'Valid email required'
-  }
-
-  if (field === 'password') {
-    errors.password = form.password.length >= 6
-      ? ''
-      : 'Min 6 characters'
-  }
-
-  if (field === 'password_confirmation') {
-    errors.password_confirmation =
-      form.password === form.password_confirmation
-        ? ''
-        : 'Passwords do not match'
-  }
-}
-
-const validateAll = () => {
-  validateField('name')
-  validateField('email')
-  validateField('password')
-  validateField('password_confirmation')
-
-  errors.terms = form.terms ? '' : 'Accept terms required'
-}
-
 // ---------------- SUBMIT ----------------
-const handleRegister = async () => {
-  validateAll()
-
-  if (
-    errors.name ||
-    errors.email ||
-    errors.password ||
-    errors.password_confirmation ||
-    errors.terms
-  ) {
-    toast.error('Fix errors first')
-    return
-  }
-
+const handleRegister = async (values, { resetForm }) => {
   loading.value = true
 
   try {
@@ -181,8 +136,4 @@ const handleRegister = async () => {
     loading.value = false
   }
 }
-
-// auto recheck password match
-watch(() => form.password, validateField)
-watch(() => form.password_confirmation, validateField)
 </script>

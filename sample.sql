@@ -1,525 +1,336 @@
--- ============================================
--- SAMPLE DATA INSERT FOR ALL TABLES
--- ============================================
+-- =========================================================================
+-- CORRECTED FUNCTION - get_events_near_location
+-- =========================================================================
+
+CREATE OR REPLACE FUNCTION public.get_events_near_location(lat numeric, lng numeric, radius_km numeric) 
+RETURNS TABLE(id uuid, title character varying, description text, venue character varying, address text, latitude numeric, longitude numeric, distance numeric)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        e.id,
+        e.title,
+        e.description,
+        e.venue,
+        e.address,
+        e.latitude,
+        e.longitude,
+        CAST((6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(lng)) + 
+         sin(radians(lat)) * sin(radians(e.latitude)))) AS numeric) AS distance
+    FROM events e
+    WHERE e.status = 'published'
+    AND (6371 * acos(cos(radians(lat)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(lng)) + 
+         sin(radians(lat)) * sin(radians(e.latitude)))) < radius_km
+    ORDER BY distance;
+END;
+$$;
+
+-- =========================================================================
+-- SAMPLE DATA FOR ALL TABLES (CORRECTED)
+-- =========================================================================
 
 -- 1. USERS
-INSERT INTO public.users (id, email, password, name, role, avatar_url, bio)
-VALUES 
-  (gen_random_uuid(), 'john.doe@example.com', 'hashed_password_123', 'John Doe', 'user', 'https://ui-avatars.com/api/?name=John+Doe&background=6366f1&color=fff', 'Event enthusiast and community organizer'),
-  (gen_random_uuid(), 'jane.smith@example.com', 'hashed_password_456', 'Jane Smith', 'user', 'https://ui-avatars.com/api/?name=Jane+Smith&background=8b5cf6&color=fff', 'Love attending tech conferences and networking'),
-  (gen_random_uuid(), 'mike.johnson@example.com', 'hashed_password_789', 'Mike Johnson', 'event_organizer', 'https://ui-avatars.com/api/?name=Mike+Johnson&background=ec4899&color=fff', 'Professional event organizer with 10+ years experience'),
-  (gen_random_uuid(), 'sarah.wilson@example.com', 'hashed_password_101', 'Sarah Wilson', 'user', 'https://ui-avatars.com/api/?name=Sarah+Wilson&background=f59e0b&color=fff', 'Music festival lover and foodie'),
-  (gen_random_uuid(), 'alex.chen@example.com', 'hashed_password_202', 'Alex Chen', 'user', 'https://ui-avatars.com/api/?name=Alex+Chen&background=10b981&color=fff', 'Tech entrepreneur and startup enthusiast'),
-  (gen_random_uuid(), 'emma.davis@example.com', 'hashed_password_303', 'Emma Davis', 'event_organizer', 'https://ui-avatars.com/api/?name=Emma+Davis&background=3b82f6&color=fff', 'Creative event planner specializing in art exhibitions'),
-  (gen_random_uuid(), 'admin@example.com', 'hashed_password_admin', 'Admin User', 'admin', 'https://ui-avatars.com/api/?name=Admin+User&background=ef4444&color=fff', 'Platform administrator');
-
--- Store user IDs for reference
-DO $$
-DECLARE
-  user1_id UUID := (SELECT id FROM public.users WHERE email = 'john.doe@example.com');
-  user2_id UUID := (SELECT id FROM public.users WHERE email = 'jane.smith@example.com');
-  user3_id UUID := (SELECT id FROM public.users WHERE email = 'mike.johnson@example.com');
-  user4_id UUID := (SELECT id FROM public.users WHERE email = 'sarah.wilson@example.com');
-  user5_id UUID := (SELECT id FROM public.users WHERE email = 'alex.chen@example.com');
-  user6_id UUID := (SELECT id FROM public.users WHERE email = 'emma.davis@example.com');
-  
-  -- Category IDs
-  cat_music_id UUID;
-  cat_tech_id UUID;
-  cat_art_id UUID;
-  cat_sports_id UUID;
-  cat_food_id UUID;
-  cat_business_id UUID;
-  cat_education_id UUID;
-  cat_entertainment_id UUID;
-  
-  -- Event IDs
-  event1_id UUID;
-  event2_id UUID;
-  event3_id UUID;
-  event4_id UUID;
-  event5_id UUID;
-  event6_id UUID;
-  event7_id UUID;
-  event8_id UUID;
-BEGIN
+INSERT INTO public.users (id, email, password, name, role, avatar_url, bio) VALUES
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'john.doe@example.com', 'hashed_password_123', 'John Doe', 'user', 'https://example.com/avatars/john.jpg', 'Event enthusiast and organizer'),
+  ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'jane.smith@example.com', 'hashed_password_456', 'Jane Smith', 'user', 'https://example.com/avatars/jane.jpg', 'Tech conference organizer'),
+  ('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'mike.johnson@example.com', 'hashed_password_789', 'Mike Johnson', 'admin', 'https://example.com/avatars/mike.jpg', 'Platform administrator'),
+  ('d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'sarah.wilson@example.com', 'hashed_password_abc', 'Sarah Wilson', 'user', 'https://example.com/avatars/sarah.jpg', 'Music festival organizer'),
+  ('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'robert.brown@example.com', 'hashed_password_def', 'Robert Brown', 'user', 'https://example.com/avatars/robert.jpg', 'Sports event planner');
 
 -- 2. CATEGORIES
-INSERT INTO public.categories (id, name, description, icon, color)
-VALUES 
-  (gen_random_uuid(), 'Music', 'Live music performances, concerts, and music festivals featuring various genres', '🎵', '#6366F1'),
-  (gen_random_uuid(), 'Tech', 'Technology conferences, hackathons, coding workshops, and tech meetups', '💻', '#8B5CF6'),
-  (gen_random_uuid(), 'Art', 'Art exhibitions, gallery openings, creative workshops, and cultural events', '🎨', '#EC4899'),
-  (gen_random_uuid(), 'Sports', 'Sporting events, tournaments, fitness classes, and outdoor activities', '⚽', '#10B981'),
-  (gen_random_uuid(), 'Food', 'Food festivals, cooking classes, wine tastings, and culinary experiences', '🍽️', '#F59E0B'),
-  (gen_random_uuid(), 'Business', 'Business conferences, networking events, seminars, and professional development', '💼', '#3B82F6'),
-  (gen_random_uuid(), 'Education', 'Workshops, lectures, training sessions, and educational programs', '📚', '#EF4444'),
-  (gen_random_uuid(), 'Entertainment', 'Comedy shows, theater performances, movie screenings, and entertainment events', '🎭', '#14B8A6');
+INSERT INTO public.categories (id, name, description, icon, color) VALUES
+  ('f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'Music', 'Music concerts, festivals, and performances', 'music-note', '#FF6B6B'),
+  ('a6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77', 'Sports', 'Sports events, competitions, and tournaments', 'sports-ball', '#4ECDC4'),
+  ('b7eebc99-9c0b-4ef8-bb6d-6bb9bd380a88', 'Technology', 'Tech conferences, hackathons, and workshops', 'laptop', '#45B7D1'),
+  ('c8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', 'Food', 'Food festivals, cooking classes, and tastings', 'food', '#96CEB4'),
+  ('d9eebc99-9c0b-4ef8-bb6d-6bb9bd380a00', 'Art', 'Art exhibitions, workshops, and galleries', 'palette', '#DDA0DD');
 
--- Get category IDs
-SELECT id INTO cat_music_id FROM public.categories WHERE name = 'Music';
-SELECT id INTO cat_tech_id FROM public.categories WHERE name = 'Tech';
-SELECT id INTO cat_art_id FROM public.categories WHERE name = 'Art';
-SELECT id INTO cat_sports_id FROM public.categories WHERE name = 'Sports';
-SELECT id INTO cat_food_id FROM public.categories WHERE name = 'Food';
-SELECT id INTO cat_business_id FROM public.categories WHERE name = 'Business';
-SELECT id INTO cat_education_id FROM public.categories WHERE name = 'Education';
-SELECT id INTO cat_entertainment_id FROM public.categories WHERE name = 'Entertainment';
-
--- 3. TAGS
-INSERT INTO public.tags (id, name)
-VALUES 
-  (gen_random_uuid(), 'family-friendly'),
-  (gen_random_uuid(), 'outdoor'),
-  (gen_random_uuid(), 'indoor'),
-  (gen_random_uuid(), 'free'),
-  (gen_random_uuid(), 'paid'),
-  (gen_random_uuid(), 'workshop'),
-  (gen_random_uuid(), 'conference'),
-  (gen_random_uuid(), 'festival'),
-  (gen_random_uuid(), 'networking'),
-  (gen_random_uuid(), 'charity'),
-  (gen_random_uuid(), 'virtual'),
-  (gen_random_uuid(), 'in-person'),
-  (gen_random_uuid(), 'weekend'),
-  (gen_random_uuid(), 'weekday'),
-  (gen_random_uuid(), 'recurring');
-
--- 4. EVENTS
--- Event 1: Summer Music Festival (Paid)
+-- 3. EVENTS
 INSERT INTO public.events (
   id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Summer Music Festival 2026',
-  'A spectacular 2-day music festival featuring international artists across multiple genres. Enjoy live performances from renowned bands, delicious food trucks, art installations, and a vibrant atmosphere perfect for music lovers of all ages.',
-  cat_music_id,
-  user3_id,
-  49.99,
-  false,
-  'Central Park Amphitheater',
-  '123 Park Avenue, New York, NY 10001',
-  40.7829,
-  -73.9654,
-  '2026-07-15 14:00:00',
-  '14:00',
-  '23:00',
-  'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-  'published',
-  245
-) RETURNING id INTO event1_id;
+  venue, address, latitude, longitude, event_date, start_time, end_time, 
+  status, view_count
+) VALUES
+  (
+    'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'Summer Music Festival 2024',
+    'A spectacular 3-day music festival featuring top international artists, food trucks, and art installations. Join us for an unforgettable experience!',
+    'f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    49.99,
+    false,
+    'Central Park',
+    'Central Park, New York, NY 10001',
+    40.7829,
+    -73.9654,
+    '2024-07-15 10:00:00',
+    '10:00',
+    '23:00',
+    'published',
+    1520
+  ),
+  (
+    'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    'Tech Conference 2024: Future of AI',
+    'Annual technology conference focusing on artificial intelligence, machine learning, and emerging technologies. Keynotes from industry leaders.',
+    'b7eebc99-9c0b-4ef8-bb6d-6bb9bd380a88',
+    'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    199.99,
+    false,
+    'Convention Center',
+    '123 Tech Blvd, San Francisco, CA 94105',
+    37.7749,
+    -122.4194,
+    '2024-08-20 09:00:00',
+    '09:00',
+    '18:00',
+    'published',
+    2300
+  ),
+  (
+    'a2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+    'Community Yoga in the Park',
+    'Free outdoor yoga session for all skill levels. Bring your mat and join the community for a relaxing morning session.',
+    'c8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    0.00,
+    true,
+    'Washington Park',
+    'Washington Park, Chicago, IL 60605',
+    41.8781,
+    -87.6298,
+    '2024-06-10 08:00:00',
+    '08:00',
+    '10:00',
+    'published',
+    890
+  ),
+  (
+    'b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
+    'International Food Festival',
+    'Taste cuisines from around the world. Over 50 food vendors, cooking demonstrations, and live entertainment.',
+    'c8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99',
+    'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
+    25.00,
+    false,
+    'Waterfront Park',
+    'Waterfront Park, Miami, FL 33101',
+    25.7617,
+    -80.1918,
+    '2024-09-05 11:00:00',
+    '11:00',
+    '22:00',
+    'published',
+    450
+  ),
+  (
+    'c4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55',
+    'Art Exhibition: Modern Masters',
+    'Contemporary art exhibition featuring works from emerging and established artists. Opening night with the artists.',
+    'd9eebc99-9c0b-4ef8-bb6d-6bb9bd380a00',
+    'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55',
+    15.00,
+    false,
+    'Modern Art Gallery',
+    '456 Art Avenue, Los Angeles, CA 90001',
+    34.0522,
+    -118.2437,
+    '2024-10-12 18:00:00',
+    '18:00',
+    '22:00',
+    'draft',
+    120
+  ),
+  (
+    'd5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66',
+    'Marathon 2024',
+    'Annual city marathon with full and half marathon options. Fundraising for local charities.',
+    'a6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77',
+    'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55',
+    75.00,
+    false,
+    'City Center',
+    'City Center, Boston, MA 02101',
+    42.3601,
+    -71.0589,
+    '2024-11-01 07:00:00',
+    '07:00',
+    '14:00',
+    'published',
+    3400
+  );
 
--- Event 2: Tech Connect Conference (Paid)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Tech Connect 2026 - Innovation Summit',
-  'Join industry leaders and innovators at the biggest tech conference of the year. Featuring keynotes from CTOs of Fortune 500 companies, hands-on workshops on AI, blockchain, and cloud computing, plus unparalleled networking opportunities with fellow tech enthusiasts.',
-  cat_tech_id,
-  user5_id,
-  299.99,
-  false,
-  'San Francisco Convention Center',
-  '456 Tech Boulevard, San Francisco, CA 94105',
-  37.7749,
-  -122.4194,
-  '2026-08-20 09:00:00',
-  '09:00',
-  '18:00',
-  'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-  'published',
-  189
-) RETURNING id INTO event2_id;
+-- 4. EVENT IMAGES
+INSERT INTO public.event_images (id, event_id, image_url, is_featured) VALUES
+  ('e6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'https://example.com/images/music-festival-banner.jpg', true),
+  ('f7eebc99-9c0b-4ef8-bb6d-6bb9bd380a88', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'https://example.com/images/music-festival-thumb1.jpg', false),
+  ('a8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'https://example.com/images/music-festival-thumb2.jpg', false),
+  ('b9eebc99-9c0b-4ef8-bb6d-6bb9bd380a00', 'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'https://example.com/images/tech-conference-banner.jpg', true),
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'https://example.com/images/yoga-park-banner.jpg', true),
+  ('d1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'https://example.com/images/food-festival-banner.jpg', true);
 
--- Event 3: Digital Dreams Art Exhibition (Paid)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Digital Dreams: Modern Art Exhibition',
-  'Experience the intersection of art and technology at this immersive digital art exhibition. Featuring works from 50+ emerging digital artists from around the world, interactive installations, VR experiences, and live digital painting sessions.',
-  cat_art_id,
-  user6_id,
-  15.00,
-  false,
-  'Downtown Art Gallery',
-  '789 Art Street, Austin, TX 78701',
-  30.2672,
-  -97.7431,
-  '2026-06-10 10:00:00',
-  '10:00',
-  '20:00',
-  'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800',
-  'published',
-  78
-) RETURNING id INTO event3_id;
-
--- Event 4: Taste of the World (Paid)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Taste of the World Food Festival',
-  'Embark on a culinary journey around the globe without leaving the city. Sample authentic dishes from 30+ countries, watch live cooking demonstrations by award-winning chefs, participate in cooking competitions, and enjoy live entertainment.',
-  cat_food_id,
-  user3_id,
-  35.00,
-  false,
-  'Waterfront Park',
-  '1000 Harbor Drive, Miami, FL 33132',
-  25.7617,
-  -80.1918,
-  '2026-09-05 11:00:00',
-  '11:00',
-  '21:00',
-  'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
-  'published',
-  310
-) RETURNING id INTO event4_id;
-
--- Event 5: City Basketball Championship (Free)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'City Basketball Championship 2026',
-  'The most anticipated basketball tournament of the year featuring 16 teams from across the city competing for the championship trophy. Enjoy high-energy games, halftime entertainment, food vendors, and family-friendly activities.',
-  cat_sports_id,
-  user1_id,
-  0,
-  true,
-  'Sports Arena',
-  '555 Stadium Road, Los Angeles, CA 90001',
-  34.0522,
-  -118.2437,
-  '2026-07-25 09:00:00',
-  '09:00',
-  '17:00',
-  'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800',
-  'published',
-  167
-) RETURNING id INTO event5_id;
-
--- Event 6: UX Design Workshop (Free)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'UX Design Workshop: From Idea to Prototype',
-  'A hands-on workshop designed for beginners and intermediate designers. Learn the fundamentals of user experience design, conduct user research, create wireframes, and build interactive prototypes using industry-standard tools.',
-  cat_education_id,
-  user6_id,
-  0,
-  true,
-  'Creative Co-working Space',
-  '123 Innovation Lane, Chicago, IL 60601',
-  41.8781,
-  -87.6298,
-  '2026-10-15 13:00:00',
-  '13:00',
-  '17:00',
-  'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=800',
-  'published',
-  92
-) RETURNING id INTO event6_id;
-
--- Event 7: Business Leaders Summit (Paid)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Business Leaders Summit 2026',
-  'An exclusive gathering of business leaders, entrepreneurs, and industry experts. Gain insights into emerging market trends, learn from successful founders, and build valuable business connections in a premium networking environment.',
-  cat_business_id,
-  user5_id,
-  199.99,
-  false,
-  'Grand Hyatt Hotel',
-  '789 Business Avenue, Boston, MA 02110',
-  42.3601,
-  -71.0589,
-  '2026-11-05 08:30:00',
-  '08:30',
-  '17:30',
-  'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
-  'published',
-  134
-) RETURNING id INTO event7_id;
-
--- Event 8: Comedy Night Special (Paid)
-INSERT INTO public.events (
-  id, title, description, category_id, user_id, price, is_free,
-  venue, address, latitude, longitude, event_date, start_time, end_time,
-  featured_image, status, view_count
-) VALUES (
-  gen_random_uuid(),
-  'Laugh Factory: Comedy Night Special',
-  'An unforgettable evening of laughter with top comedians from around the country. Featuring both established headliners and up-and-coming talent, this comedy show promises a night of non-stop entertainment and good vibes.',
-  cat_entertainment_id,
-  user3_id,
-  25.00,
-  false,
-  'Comedy Club Downtown',
-  '456 Entertainment Street, Las Vegas, NV 89101',
-  36.1699,
-  -115.1398,
-  '2026-12-10 19:00:00',
-  '19:00',
-  '22:00',
-  'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=800',
-  'published',
-  56
-) RETURNING id INTO event8_id;
-
--- 5. EVENT IMAGES
--- Add featured images for events
-INSERT INTO public.event_images (id, event_id, image_url, is_featured)
-SELECT 
-  gen_random_uuid(),
-  event_id,
-  image_url,
-  true
-FROM (
-  VALUES 
-    (event1_id, 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800'),
-    (event1_id, 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800'),
-    (event2_id, 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'),
-    (event2_id, 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800'),
-    (event3_id, 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800'),
-    (event3_id, 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800'),
-    (event4_id, 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800'),
-    (event4_id, 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'),
-    (event5_id, 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800'),
-    (event6_id, 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=800'),
-    (event7_id, 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800'),
-    (event8_id, 'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=800')
-) AS images(event_id, image_url)
-ON CONFLICT DO NOTHING;
-
--- Add non-featured images
-INSERT INTO public.event_images (id, event_id, image_url, is_featured)
-SELECT 
-  gen_random_uuid(),
-  event_id,
-  image_url,
-  false
-FROM (
-  VALUES 
-    (event1_id, 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800'),
-    (event1_id, 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800'),
-    (event2_id, 'https://images.unsplash.com/photo-1551817958-5b075e8b9f8c?w=800'),
-    (event3_id, 'https://images.unsplash.com/photo-1563299796-17596ed6b017?w=800'),
-    (event4_id, 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800'),
-    (event5_id, 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800')
-) AS images(event_id, image_url);
+-- 5. TAGS
+INSERT INTO public.tags (id, name) VALUES
+  ('e2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'rock'),
+  ('f3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'jazz'),
+  ('a4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'outdoor'),
+  ('b5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'indoor'),
+  ('c6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77', 'family-friendly'),
+  ('d7eebc99-9c0b-4ef8-bb6d-6bb9bd380a88', 'workshop'),
+  ('e8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', 'networking'),
+  ('f9eebc99-9c0b-4ef8-bb6d-6bb9bd380a00', 'fundraiser');
 
 -- 6. EVENT TAGS
-INSERT INTO public.event_tags (event_id, tag_id)
+INSERT INTO public.event_tags (event_id, tag_id) VALUES
+  ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'e2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33'),
+  ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'f3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44'),
+  ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55'),
+  ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'c6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77'),
+  ('f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'b5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66'),
+  ('f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'd7eebc99-9c0b-4ef8-bb6d-6bb9bd380a88'),
+  ('f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'e8eebc99-9c0b-4ef8-bb6d-6bb9bd380a99'),
+  ('a2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'a4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55'),
+  ('a2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'c6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77'),
+  ('b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55'),
+  ('b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'c6eebc99-9c0b-4ef8-bb6d-6bb9bd380a77'),
+  ('d5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'a4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55'),
+  ('d5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'f9eebc99-9c0b-4ef8-bb6d-6bb9bd380a00');
+
+-- 7. BOOKMARKS
+INSERT INTO public.bookmarks (id, user_id, event_id) VALUES
+  ('a0febc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'),
+  ('b1febc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44'),
+  ('c2febc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'),
+  ('d3febc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'd5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66'),
+  ('e4febc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'),
+  ('f5febc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'),
+  ('a6febc99-9c0b-4ef8-bb6d-6bb9bd380a77', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33');
+
+-- 8. FOLLOWS
+INSERT INTO public.follows (id, follower_id, followed_user_id) VALUES
+  ('b7febc99-9c0b-4ef8-bb6d-6bb9bd380a88', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'),
+  ('c8febc99-9c0b-4ef8-bb6d-6bb9bd380a99', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44'),
+  ('d9febc99-9c0b-4ef8-bb6d-6bb9bd380a00', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'),
+  ('e0febc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55'),
+  ('f1febc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+
+-- 9. PAYMENTS
+INSERT INTO public.payments (id, user_id, amount, currency, status, transaction_ref, payment_method) VALUES
+  ('a2febc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 49.99, 'USD', 'completed', 'TXN-2024-001', 'credit_card'),
+  ('b3febc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 25.00, 'USD', 'completed', 'TXN-2024-002', 'paypal'),
+  ('c4febc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 199.99, 'USD', 'completed', 'TXN-2024-003', 'credit_card'),
+  ('d5febc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 75.00, 'USD', 'pending', 'TXN-2024-004', 'bank_transfer'),
+  ('e6febc99-9c0b-4ef8-bb6d-6bb9bd380a77', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 49.99, 'USD', 'completed', 'TXN-2024-005', 'credit_card'),
+  ('f7febc99-9c0b-4ef8-bb6d-6bb9bd380a88', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 199.99, 'USD', 'failed', 'TXN-2024-006', 'credit_card'),
+  ('a8febc99-9c0b-4ef8-bb6d-6bb9bd380a99', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 15.00, 'USD', 'completed', 'TXN-2024-007', 'paypal');
+
+-- 10. TICKETS
+INSERT INTO public.tickets (id, event_id, user_id, payment_id, quantity, total_price, status) VALUES
+  ('b9febc99-9c0b-4ef8-bb6d-6bb9bd380a00', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a2febc99-9c0b-4ef8-bb6d-6bb9bd380a33', 2, 99.98, 'confirmed'),
+  ('c0febc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b3febc99-9c0b-4ef8-bb6d-6bb9bd380a44', 4, 100.00, 'confirmed'),
+  ('d1febc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'c4febc99-9c0b-4ef8-bb6d-6bb9bd380a55', 1, 199.99, 'confirmed'),
+  ('e2febc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'd5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'd5febc99-9c0b-4ef8-bb6d-6bb9bd380a66', 3, 225.00, 'pending'),
+  ('f3febc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'e6febc99-9c0b-4ef8-bb6d-6bb9bd380a77', 1, 49.99, 'confirmed'),
+  ('a4febc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'f7febc99-9c0b-4ef8-bb6d-6bb9bd380a88', 2, 399.98, 'cancelled'),
+  ('b5febc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'c4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a8febc99-9c0b-4ef8-bb6d-6bb9bd380a99', 2, 30.00, 'confirmed');
+
+-- =========================================================================
+-- SAMPLE SELECT QUERIES TO VERIFY DATA
+-- =========================================================================
+
+-- Get all events with their categories and organizers
 SELECT 
-  e.id,
-  t.id
-FROM public.events e
-CROSS JOIN public.tags t
-WHERE 
-  (e.title LIKE '%Music%' AND t.name IN ('outdoor', 'festival', 'paid', 'in-person', 'weekend')) OR
-  (e.title LIKE '%Tech%' AND t.name IN ('indoor', 'conference', 'paid', 'networking', 'in-person', 'weekday')) OR
-  (e.title LIKE '%Art%' AND t.name IN ('indoor', 'workshop', 'paid', 'in-person', 'weekend')) OR
-  (e.title LIKE '%Food%' AND t.name IN ('outdoor', 'festival', 'paid', 'family-friendly', 'in-person', 'weekend')) OR
-  (e.title LIKE '%Basketball%' AND t.name IN ('outdoor', 'sports', 'free', 'family-friendly', 'in-person', 'weekend')) OR
-  (e.title LIKE '%Workshop%' AND t.name IN ('indoor', 'workshop', 'free', 'in-person', 'weekday')) OR
-  (e.title LIKE '%Business%' AND t.name IN ('indoor', 'conference', 'paid', 'networking', 'in-person', 'weekday')) OR
-  (e.title LIKE '%Comedy%' AND t.name IN ('indoor', 'paid', 'in-person', 'weekend'));
-
--- 7. BOOKMARKS (Users bookmarking events they're interested in)
-INSERT INTO public.bookmarks (id, user_id, event_id)
-SELECT 
-  gen_random_uuid(),
-  u.id,
-  e.id
-FROM public.users u
-CROSS JOIN public.events e
-WHERE 
-  (u.email = 'john.doe@example.com' AND e.id IN (event2_id, event4_id)) OR
-  (u.email = 'jane.smith@example.com' AND e.id IN (event3_id, event1_id)) OR
-  (u.email = 'sarah.wilson@example.com' AND e.id IN (event1_id, event4_id, event8_id)) OR
-  (u.email = 'alex.chen@example.com' AND e.id IN (event2_id, event7_id, event6_id)) OR
-  (u.email = 'emma.davis@example.com' AND e.id IN (event3_id, event6_id))
-ON CONFLICT DO NOTHING;
-
--- 8. FOLLOWS (Users following events)
-INSERT INTO public.follows (id, user_id, event_id)
-SELECT 
-  gen_random_uuid(),
-  u.id,
-  e.id
-FROM public.users u
-CROSS JOIN public.events e
-WHERE 
-  (u.email = 'john.doe@example.com' AND e.id IN (event1_id, event2_id, event5_id)) OR
-  (u.email = 'jane.smith@example.com' AND e.id IN (event1_id, event3_id, event4_id)) OR
-  (u.email = 'sarah.wilson@example.com' AND e.id IN (event1_id, event4_id)) OR
-  (u.email = 'alex.chen@example.com' AND e.id IN (event2_id, event7_id)) OR
-  (u.email = 'emma.davis@example.com' AND e.id IN (event3_id, event6_id))
-ON CONFLICT DO NOTHING;
-
--- 9. TICKETS
--- Confirmed tickets
-INSERT INTO public.tickets (id, event_id, user_id, quantity, total_price, status, payment_id, transaction_ref, created_at, updated_at)
-SELECT 
-  gen_random_uuid(),
-  event_id,
-  user_id,
-  quantity,
-  total_price,
-  'confirmed',
-  payment_id,
-  transaction_ref,
-  now() - (random() * INTERVAL '30 days'),
-  now() - (random() * INTERVAL '30 days')
-FROM (
-  VALUES 
-    (event1_id, user1_id, 2, 99.98, 'pay_123456', 'txn_abcdef'),
-    (event1_id, user2_id, 1, 49.99, 'pay_234567', 'txn_bcdefg'),
-    (event2_id, user4_id, 1, 299.99, 'pay_345678', 'txn_cdefgh'),
-    (event2_id, user6_id, 2, 599.98, 'pay_456789', 'txn_defghi'),
-    (event3_id, user2_id, 1, 15.00, 'pay_567890', 'txn_efghij'),
-    (event3_id, user5_id, 2, 30.00, 'pay_678901', 'txn_fghijk'),
-    (event4_id, user1_id, 3, 105.00, 'pay_789012', 'txn_ghijkl'),
-    (event4_id, user5_id, 1, 35.00, 'pay_890123', 'txn_hijklm'),
-    (event5_id, user1_id, 4, 0, NULL, NULL),
-    (event5_id, user3_id, 2, 0, NULL, NULL),
-    (event6_id, user2_id, 1, 0, NULL, NULL),
-    (event7_id, user1_id, 1, 199.99, 'pay_901234', 'txn_ijklmn'),
-    (event7_id, user4_id, 2, 399.98, 'pay_012345', 'txn_jklmno'),
-    (event8_id, user2_id, 2, 50.00, 'pay_123789', 'txn_klmnop')
-) AS data(event_id, user_id, quantity, total_price, payment_id, transaction_ref);
-
--- Pending tickets
-INSERT INTO public.tickets (id, event_id, user_id, quantity, total_price, status, payment_id, transaction_ref, created_at, updated_at)
-SELECT 
-  gen_random_uuid(),
-  event_id,
-  user_id,
-  quantity,
-  total_price,
-  'pending',
-  payment_id,
-  transaction_ref,
-  now() - (random() * INTERVAL '7 days'),
-  now() - (random() * INTERVAL '7 days')
-FROM (
-  VALUES 
-    (event1_id, user5_id, 2, 99.98, 'pay_234890', 'txn_lmnopq'),
-    (event2_id, user3_id, 1, 299.99, 'pay_345901', 'txn_mnopqr'),
-    (event4_id, user6_id, 1, 35.00, 'pay_456012', 'txn_nopqrs')
-) AS data(event_id, user_id, quantity, total_price, payment_id, transaction_ref);
-
--- Cancelled tickets
-INSERT INTO public.tickets (id, event_id, user_id, quantity, total_price, status, payment_id, transaction_ref, created_at, updated_at)
-SELECT 
-  gen_random_uuid(),
-  event_id,
-  user_id,
-  quantity,
-  total_price,
-  'cancelled',
-  payment_id,
-  transaction_ref,
-  now() - (random() * INTERVAL '60 days'),
-  now() - (random() * INTERVAL '30 days')
-FROM (
-  VALUES 
-    (event1_id, user4_id, 1, 49.99, 'pay_567123', 'txn_opqrst'),
-    (event3_id, user1_id, 1, 15.00, 'pay_678234', 'txn_pqrstu')
-) AS data(event_id, user_id, quantity, total_price, payment_id, transaction_ref);
-
--- 10. VERIFY DATA
-RAISE NOTICE '✅ Data insertion complete! Here are the counts:';
-RAISE NOTICE 'Users: %', (SELECT COUNT(*) FROM public.users);
-RAISE NOTICE 'Categories: %', (SELECT COUNT(*) FROM public.categories);
-RAISE NOTICE 'Tags: %', (SELECT COUNT(*) FROM public.tags);
-RAISE NOTICE 'Events: %', (SELECT COUNT(*) FROM public.events);
-RAISE NOTICE 'Event Images: %', (SELECT COUNT(*) FROM public.event_images);
-RAISE NOTICE 'Event Tags: %', (SELECT COUNT(*) FROM public.event_tags);
-RAISE NOTICE 'Bookmarks: %', (SELECT COUNT(*) FROM public.bookmarks);
-RAISE NOTICE 'Follows: %', (SELECT COUNT(*) FROM public.follows);
-RAISE NOTICE 'Tickets: %', (SELECT COUNT(*) FROM public.tickets);
-
-END $$;
-
--- ============================================
--- VIEW SAMPLE DATA
--- ============================================
-
--- View all events with details
-SELECT 
-  e.id,
   e.title,
-  e.price,
-  e.is_free,
-  e.event_date,
-  e.status,
+  e.description,
   c.name as category,
   u.name as organizer,
-  e.view_count
-FROM public.events e
-LEFT JOIN public.categories c ON e.category_id = c.id
-LEFT JOIN public.users u ON e.user_id = u.id
+  e.price,
+  e.event_date,
+  e.status
+FROM events e
+LEFT JOIN categories c ON e.category_id = c.id
+LEFT JOIN users u ON e.user_id = u.id
 ORDER BY e.event_date;
 
--- View event statistics
+-- Get event statistics using the function
 SELECT 
   e.title,
-  COUNT(DISTINCT b.id) as bookmarks,
-  COUNT(DISTINCT f.id) as follows,
-  COUNT(DISTINCT t.id) as total_tickets,
-  COUNT(DISTINCT CASE WHEN t.status = 'confirmed' THEN t.id END) as confirmed_tickets,
-  COALESCE(SUM(CASE WHEN t.status = 'confirmed' THEN t.total_price ELSE 0 END), 0) as revenue
-FROM public.events e
-LEFT JOIN public.bookmarks b ON e.id = b.event_id
-LEFT JOIN public.follows f ON e.id = f.event_id
-LEFT JOIN public.tickets t ON e.id = t.event_id
-GROUP BY e.id, e.title
-ORDER BY revenue DESC;
+  stats.*
+FROM events e,
+LATERAL get_event_stats(e.id) stats
+WHERE e.status = 'published'
+LIMIT 5;
 
--- View user activity
+-- Find events near a location (New York)
 SELECT 
-  u.name,
-  u.email,
-  COUNT(DISTINCT b.id) as bookmarks,
-  COUNT(DISTINCT f.id) as follows,
-  COUNT(DISTINCT t.id) as tickets_purchased,
-  COALESCE(SUM(CASE WHEN t.status = 'confirmed' THEN t.total_price ELSE 0 END), 0) as total_spent
-FROM public.users u
-LEFT JOIN public.bookmarks b ON u.id = b.user_id
-LEFT JOIN public.follows f ON u.id = f.user_id
-LEFT JOIN public.tickets t ON u.id = t.user_id
-GROUP BY u.id, u.name, u.email
-ORDER BY total_spent DESC;
+  id,
+  title,
+  distance,
+  venue
+FROM get_events_near_location(40.7128, -74.0060, 50)
+LIMIT 10;
 
--- View ticket sales by category
+-- Get all bookmarks for a user with event details
+SELECT 
+  u.name as user_name,
+  e.title as event_title,
+  e.event_date
+FROM bookmarks b
+JOIN users u ON b.user_id = u.id
+JOIN events e ON b.event_id = e.id
+WHERE u.id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+-- Get all followers for a user
+SELECT 
+  u.name as follower_name,
+  u.email as follower_email
+FROM follows f
+JOIN users u ON f.follower_id = u.id
+WHERE f.followed_user_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+-- Get all tickets with payment and event information
+SELECT 
+  t.id as ticket_id,
+  e.title as event_title,
+  u.name as attendee_name,
+  t.quantity,
+  t.total_price,
+  t.status as ticket_status,
+  p.status as payment_status
+FROM tickets t
+JOIN events e ON t.event_id = e.id
+JOIN users u ON t.user_id = u.id
+LEFT JOIN payments p ON t.payment_id = p.id
+ORDER BY t.created_at DESC;
+
+-- Get events with their tags
+SELECT 
+  e.title,
+  array_agg(t.name) as tags
+FROM events e
+JOIN event_tags et ON e.id = et.event_id
+JOIN tags t ON et.tag_id = t.id
+GROUP BY e.id, e.title;
+
+-- Get total revenue by category
 SELECT 
   c.name as category,
   COUNT(t.id) as tickets_sold,
-  COALESCE(SUM(CASE WHEN t.status = 'confirmed' THEN t.total_price ELSE 0 END), 0) as revenue
-FROM public.categories c
-LEFT JOIN public.events e ON c.id = e.category_id
-LEFT JOIN public.tickets t ON e.id = t.event_id
+  SUM(t.total_price) as total_revenue
+FROM categories c
+JOIN events e ON c.id = e.category_id
+JOIN tickets t ON e.id = t.event_id
 WHERE t.status = 'confirmed'
 GROUP BY c.id, c.name
-ORDER BY revenue DESC;
+ORDER BY total_revenue DESC;
+
+-- Get most bookmarked events
+SELECT 
+  e.title,
+  COUNT(b.id) as bookmark_count
+FROM events e
+LEFT JOIN bookmarks b ON e.id = b.event_id
+GROUP BY e.id, e.title
+ORDER BY bookmark_count DESC
+LIMIT 5;

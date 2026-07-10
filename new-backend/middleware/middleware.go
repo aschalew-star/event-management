@@ -1,5 +1,10 @@
 package middleware
 
+import (
+// "github/go/gin"
+// "http"
+)
+
 // ==========================================
 
 // AuthMiddleware validates JWT token and sets user context

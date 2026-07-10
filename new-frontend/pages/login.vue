@@ -13,7 +13,7 @@
       </div>
 
       <!-- Form -->
-      <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
+      <VeeForm @submit="handleLogin" class="mt-8 space-y-6" v-slot="{ errors, meta }">
 
         <div class="space-y-4">
 
@@ -23,18 +23,17 @@
               Email Address
             </label>
 
-            <input
+            <VeeField
+              name="email"
+              v-model="form.email"
               type="email"
+              placeholder="Enter your email"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
               :class="{ 'border-red-500 focus:ring-red-500 focus:border-red-500': errors.email }"
-              placeholder="Enter your email"
-              v-model="form.email"
-              @blur="validateField('email')"
+              rules="required|email"
             />
 
-            <p v-if="errors.email" class="text-red-500 text-sm mt-1">
-              {{ errors.email }}
-            </p>
+            <VeeErrorMessage name="email" class="text-red-500 text-sm mt-1" />
           </div>
 
           <!-- Password -->
@@ -44,13 +43,14 @@
             </label>
 
             <div class="relative">
-              <input
+              <VeeField
+                name="password"
+                v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
+                placeholder="Enter your password"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 :class="{ 'border-red-500 focus:ring-red-500 focus:border-red-500': errors.password }"
-                placeholder="Enter your password"
-                v-model="form.password"
-                @blur="validateField('password')"
+                rules="required|min:6"
               />
 
               <button
@@ -63,9 +63,7 @@
               </button>
             </div>
 
-            <p v-if="errors.password" class="text-red-500 text-sm mt-1">
-              {{ errors.password }}
-            </p>
+            <VeeErrorMessage name="password" class="text-red-500 text-sm mt-1" />
           </div>
 
         </div>
@@ -76,6 +74,7 @@
             <input
               type="checkbox"
               v-model="form.remember"
+              @change="handleRememberMe"
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label class="ml-2 text-sm text-gray-900 dark:text-gray-300">
@@ -91,7 +90,7 @@
         <!-- Submit -->
         <button
           type="submit"
-          :disabled="loading"
+          :disabled="loading || !meta.valid"
           class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span v-if="loading" class="inline-flex items-center">
@@ -118,13 +117,14 @@
           </NuxtLink>
         </div>
 
-      </form>
+      </VeeForm>
 
     </div>
   </div>
 </template>
+
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -142,48 +142,8 @@ const form = reactive({
   remember: false
 })
 
-const errors = reactive({
-  email: '',
-  password: ''
-})
-
-// ---------------- VALIDATION ----------------
-const validateField = (field) => {
-  if (field === 'email') {
-    if (!form.email) {
-      errors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      errors.email = 'Please enter a valid email address'
-    } else {
-      errors.email = ''
-    }
-  }
-  
-  if (field === 'password') {
-    if (!form.password) {
-      errors.password = 'Password is required'
-    } else if (form.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters'
-    } else {
-      errors.password = ''
-    }
-  }
-}
-
-const validateAll = () => {
-  validateField('email')
-  validateField('password')
-}
-
 // ---------------- SUBMIT ----------------
-const handleLogin = async () => {
-  validateAll()
-
-  if (errors.email || errors.password) {
-    toast.error('Please fix the validation errors before continuing')
-    return
-  }
-
+const handleLogin = async (values, { resetForm }) => {
   loading.value = true
 
   try {
@@ -192,7 +152,7 @@ const handleLogin = async () => {
     if (result.success) {
       toast.success('Welcome back!')
       // Redirect to the dashboard or landing home context path
-      router.push('/dashboard')
+      router.push('/events')
     } else {
       toast.error(result.error || 'Invalid credentials. Please try again.')
     }
@@ -205,6 +165,16 @@ const handleLogin = async () => {
 }
 
 // ---------------- REMEMBER ME ----------------
+const handleRememberMe = () => {
+  if (process.client) {
+    if (form.remember && form.email) {
+      localStorage.setItem('remembered_email', form.email)
+    } else if (!form.remember) {
+      localStorage.removeItem('remembered_email')
+    }
+  }
+}
+
 onMounted(() => {
   // Safe validation fallback for server-side environments (Nuxt 3)
   if (process.client) {
@@ -212,16 +182,6 @@ onMounted(() => {
     if (savedEmail) {
       form.email = savedEmail
       form.remember = true
-    }
-  }
-})
-
-watch(() => form.remember, (newVal) => {
-  if (process.client) {
-    if (newVal && form.email) {
-      localStorage.setItem('remembered_email', form.email)
-    } else if (!newVal) {
-      localStorage.removeItem('remembered_email')
     }
   }
 })

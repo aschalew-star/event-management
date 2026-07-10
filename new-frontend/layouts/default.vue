@@ -7,3 +7,4 @@
     <AppFooter />
   </div>
 </template>
+

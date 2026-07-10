@@ -122,7 +122,7 @@
             <!-- Payment Method Info -->
             <div class="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
               <div class="flex items-center gap-3">
-                <img src="" alt="Chapa" class="h-8" />
+                <img src="/images/chapa-logo.png" alt="Chapa" class="h-8" />
                 <div>
                   <p class="text-sm font-medium text-gray-900 dark:text-white">Pay with Chapa</p>
                   <p class="text-xs text-gray-600 dark:text-gray-400">Secure payment via Chapa</p>
@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { useAuthStore } from '~/stores/auth'
@@ -255,7 +255,14 @@ const error = computed(() => {
 })
 
 // Chapa payment mutation
-const { mutate: processChapaPayment } = useMutation(PROCESS_CHAPA_PAYMENT)
+const { mutate: processChapaPayment, onError: onPaymentError } = useMutation(PROCESS_CHAPA_PAYMENT)
+
+// Handle payment errors
+onPaymentError((error) => {
+  console.error('Payment mutation error:', error)
+  toast.error(error.message || 'Payment processing failed')
+  processing.value = false
+})
 
 const formatDate = (dateStr: string, full: boolean = false) => {
   if (!dateStr) return 'TBD'
@@ -276,22 +283,23 @@ const formatDate = (dateStr: string, full: boolean = false) => {
 }
 
 const processPayment = async () => {
+  // Check authentication
   if (!authStore.isAuthenticated) {
     toast.warning('Please sign in to continue')
     router.push('/login')
     return
   }
 
+  // Validate form
   if (!isFormValid.value) {
     toast.warning('Please fill in all required fields')
     return
   }
 
+  // Handle free events
   if (event.value?.is_free) {
-    // Handle free ticket directly
     try {
       processing.value = true
-      // Redirect to event page with success
       toast.success('🎉 Free ticket claimed successfully!')
       router.push(`/events/${eventId.value}`)
     } catch (error: any) {
@@ -304,46 +312,98 @@ const processPayment = async () => {
 
   processing.value = true
   try {
+    // FIXED: Wrap the arguments in an "input" object
     const result = await processChapaPayment({
-      eventId: eventId.value,
-      quantity: quantity.value,
-      totalPrice: totalPrice.value,
-      email: customer.value.email,
-      phone: customer.value.phone,
-      firstName: customer.value.firstName,
-      lastName: customer.value.lastName
+      input: {
+        eventId: eventId.value,
+        quantity: quantity.value,
+        email: customer.value.email,
+        phone: customer.value.phone,
+        firstName: customer.value.firstName,
+        lastName: customer.value.lastName
+      }
     })
 
     console.log('Chapa payment result:', result)
 
-    if (result?.data?.processChapaPayment?.success) {
-      const checkoutUrl = result.data.processChapaPayment.data.checkout_url
-      const transactionRef = result.data.processChapaPayment.data.transaction_ref
+    // Check if result exists
+    if (!result || !result.data) {
+      throw new Error('No response from payment service')
+    }
+
+    const paymentResponse = result.data.processChapaPayment
+    
+    if (!paymentResponse) {
+      throw new Error('Unexpected response structure')
+    }
+    
+    // Check if the response was successful
+    if (paymentResponse.success && paymentResponse.data) {
+      const checkoutUrl = paymentResponse.data.checkout_url
+      const transactionRef = paymentResponse.data.transaction_ref
       
       if (checkoutUrl) {
         // Redirect to Chapa checkout page
+        toast.success('Redirecting to Chapa payment...')
         window.location.href = checkoutUrl
       } else {
-        toast.success('Payment initialized! Please check your email for the payment link.')
+        // If no checkout URL but payment was successful
+        toast.success(paymentResponse.message || 'Payment initialized successfully!')
         router.push(`/events/${eventId.value}`)
       }
     } else {
-      toast.error(result?.data?.processChapaPayment?.message || 'Payment initialization failed')
+      // Handle unsuccessful response
+      const errorMsg = paymentResponse.message || 'Payment initialization failed'
+      toast.error(errorMsg)
+      console.error('Payment failed:', paymentResponse)
     }
   } catch (error: any) {
     console.error('Payment error:', error)
-    toast.error(error.message || 'Payment processing failed')
+    
+    // Handle different types of errors
+    if (error.networkError) {
+      toast.error('Network error. Please check your connection and try again.')
+    } else if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+      const graphqlError = error.graphQLErrors[0]
+      toast.error(graphqlError.message || 'Payment processing failed')
+    } else {
+      toast.error(error.message || 'An unexpected error occurred')
+    }
   } finally {
     processing.value = false
   }
 }
 
 // Pre-fill customer data if available
-if (authStore.isAuthenticated && authStore.user) {
-  customer.value.email = authStore.user.email || ''
-  customer.value.firstName = authStore.user.name?.split(' ')[0] || ''
-  customer.value.lastName = authStore.user.name?.split(' ').slice(1).join(' ') || ''
+const prefillCustomerData = () => {
+  if (authStore.isAuthenticated && authStore.user) {
+    const user = authStore.user
+    customer.value.email = user.email || ''
+    
+    // Handle name splitting safely
+    if (user.name) {
+      const nameParts = user.name.trim().split(' ')
+      customer.value.firstName = nameParts[0] || ''
+      customer.value.lastName = nameParts.slice(1).join(' ') || ''
+    }
+  }
 }
+
+// Check for payment status on mount
+onMounted(() => {
+  prefillCustomerData()
+  
+  // Check if returning from Chapa payment
+  const status = route.query.status
+  const trxRef = route.query.tx_ref
+  
+  if (status === 'success' && trxRef) {
+    toast.success('Payment completed successfully!')
+    router.push(`/events/${eventId.value}`)
+  } else if (status === 'failed' || status === 'cancelled') {
+    toast.error('Payment was not completed. Please try again.')
+  }
+})
 </script>
 
 <style scoped>

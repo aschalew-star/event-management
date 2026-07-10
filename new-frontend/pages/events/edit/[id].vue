@@ -15,14 +15,26 @@
 
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center py-16">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
+      ></div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="queryError || !event" class="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
-      <Icon name="lucide:alert-circle" class="w-20 h-20 text-red-400 mx-auto mb-4" />
-      <h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">Failed to Load Event</h3>
-      <p class="text-gray-500 dark:text-gray-400 mb-6">{{ queryError?.message || 'Event not found' }}</p>
+    <div
+      v-else-if="queryError || !event"
+      class="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl"
+    >
+      <Icon
+        name="lucide:alert-circle"
+        class="w-20 h-20 text-red-400 mx-auto mb-4"
+      />
+      <h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">
+        Failed to Load Event
+      </h3>
+      <p class="text-gray-500 dark:text-gray-400 mb-6">
+        {{ queryError?.message || "Event not found" }}
+      </p>
       <NuxtLink
         to="/my-events"
         class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
@@ -48,7 +60,30 @@
       >
         ⚠️ {{ error }}
       </div>
+      <!-- Add this before the main form -->
+      <ImageUploadProgress :uploading="uploading" :progress="uploadProgress" />
 
+      <!-- Or add it conditionally in the image section -->
+      <div
+        v-if="uploading"
+        class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+      >
+        <div class="flex items-center gap-3">
+          <Icon
+            name="lucide:loader-2"
+            class="w-5 h-5 animate-spin text-blue-600"
+          />
+          <span class="text-sm text-blue-700 dark:text-blue-300"
+            >Uploading images... {{ uploadProgress }}%</span
+          >
+        </div>
+        <div class="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div
+            class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            :style="{ width: `${uploadProgress}%` }"
+          ></div>
+        </div>
+      </div>
       <VeeForm
         v-slot="{ errors, isSubmitting }"
         @submit="handleSubmit"
@@ -68,7 +103,10 @@
             placeholder="Enter event title"
             v-model="form.title"
           />
-          <VeeErrorMessage name="title" class="text-red-500 text-xs mt-1 block" />
+          <VeeErrorMessage
+            name="title"
+            class="text-red-500 text-xs mt-1 block"
+          />
         </div>
 
         <div>
@@ -91,7 +129,23 @@
           />
         </div>
 
-        <BaseCategorySelect v-model="form.category_id" />
+        <div>
+          <label
+            class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+          >
+            Category *
+          </label>
+          <BaseCategorySelect v-model="form.category_id" />
+          <VeeField
+            name="category_id"
+            type="hidden"
+            v-model="form.category_id"
+          />
+          <VeeErrorMessage
+            name="category_id"
+            class="text-red-500 text-xs mt-1 block"
+          />
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -238,7 +292,9 @@
                 v-model="form.status"
                 class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
               />
-              <span class="text-sm text-gray-700 dark:text-gray-300">Published</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300"
+                >Published</span
+              >
             </label>
             <label class="flex items-center gap-2">
               <input
@@ -247,7 +303,9 @@
                 v-model="form.status"
                 class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
               />
-              <span class="text-sm text-gray-700 dark:text-gray-300">Draft</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300"
+                >Draft</span
+              >
             </label>
           </div>
         </div>
@@ -290,64 +348,112 @@
           <label
             class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
           >
-            Featured Image *
+            Event Images
           </label>
-          <div
-            class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors"
-            @dragover.prevent
-            @drop.prevent="handleDrop"
-          >
-            <div v-if="imagePreview" class="mb-4">
-              <div class="relative inline-block">
+          <div class="space-y-3">
+            <!-- Existing Images -->
+            <div
+              v-if="existingImages.length > 0"
+              class="grid grid-cols-2 sm:grid-cols-3 gap-3"
+            >
+              <div
+                v-for="(img, index) in existingImages"
+                :key="img.id"
+                class="relative group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600"
+              >
                 <img
-                  :src="imagePreview"
-                  alt="Featured image preview"
-                  class="max-h-48 rounded-lg object-cover"
+                  :src="img.image_url"
+                  :alt="`Event image ${index + 1}`"
+                  class="w-full h-32 object-cover"
+                />
+                <div
+                  class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <button
+                    type="button"
+                    @click="img.is_featured ? removeFeaturedImage(eventId || null, img.id): setFeaturedImage(eventId || null, img.id)"
+                    class="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600 transition-colors"
+                    :title="
+                      img.is_featured ? 'unset the featured' : 'Set as featured'
+                    "
+                  >
+                    <Icon name="lucide:star" class="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    @click="removeExistingImage(index)"
+                    class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <Icon name="lucide:x" class="w-4 h-4" />
+                  </button>
+                </div>
+                <div v-if="img.is_featured" class="absolute top-2 left-2">
+                  <span
+                    class="px-2 py-0.5 bg-yellow-500 text-white text-xs font-medium rounded-full flex items-center gap-1"
+                  >
+                    <Icon name="lucide:star" class="w-3 h-3" />
+                    Featured
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- New Images Upload -->
+            <div
+              class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors"
+              @dragover.prevent
+              @drop.prevent="handleDrop"
+            >
+              <div
+                v-if="newImagePreviews.length > 0"
+                class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4"
+              >
+                <div
+                  v-for="(preview, index) in newImagePreviews"
+                  :key="index"
+                  class="relative rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600"
+                >
+                  <img
+                    :src="preview"
+                    :alt="`New image ${index + 1}`"
+                    class="w-full h-32 object-cover"
+                  />
+                  <button
+                    type="button"
+                    @click="removeNewImage(index)"
+                    class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <Icon name="lucide:x" class="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              <div v-else>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="handleImageUpload"
+                  class="hidden"
+                  ref="fileInput"
                 />
                 <button
                   type="button"
-                  @click="removeImage"
-                  class="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  @click="fileInput?.click()"
+                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm rounded font-medium transition-colors"
                 >
-                  <Icon name="lucide:x" class="w-3 h-3" />
+                  <Icon
+                    name="lucide:cloud-upload"
+                    class="w-4 h-4 inline mr-2"
+                  />
+                  Choose Images
                 </button>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  JPEG, PNG, WebP (max 10MB each)
+                </p>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Click the X to remove and upload a new image
-              </p>
-            </div>
-
-            <div v-else>
-              <input
-                type="file"
-                accept="image/*"
-                @change="handleImageUpload"
-                class="hidden"
-                ref="fileInput"
-              />
-              <button
-                type="button"
-                @click="fileInput?.click()"
-                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm rounded font-medium transition-colors"
-              >
-                <Icon name="lucide:cloud-upload" class="w-4 h-4 inline mr-2" />
-                Choose Image
-              </button>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                JPEG, PNG, WebP (max 10MB)
-              </p>
             </div>
           </div>
-
-          <VeeField
-            name="featured_image"
-            type="hidden"
-            v-model="form.featured_image"
-          />
-          <VeeErrorMessage
-            name="featured_image"
-            class="text-red-500 text-xs mt-1 block"
-          />
         </div>
 
         <div
@@ -387,7 +493,8 @@ import { useAuthStore } from "~/stores/auth";
 import { useToast } from "vue-toastification";
 import * as yup from "yup";
 import { GET_EVENT_BY_ID } from "~/graphql/eventQueries";
-import { UPDATE_EVENT_MUTATION } from "~/graphql/eventMutations";
+import { UPDATE_EVENT } from "~/graphql/eventMutations";
+import { useEventImageManager } from "~/composables/useEventImageManager";
 
 definePageMeta({
   middleware: 'auth'
@@ -398,13 +505,26 @@ const router = useRouter();
 const authStore = useAuthStore();
 const toast = useToast();
 
+const {
+  uploading,
+  deleting,
+  updatingFeatured,
+  uploadProgress,
+  errors: uploadErrors,
+  uploadImages,
+  deleteImage,
+  setFeaturedImage,
+  removeFeaturedImage,
+  validateImages
+} = useEventImageManager();
+
 const eventId = computed(() => {
   const id = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
   return id || null;
 });
 
 // Form state
-const form = reactive<{ [key: string]: any }>({
+const form = reactive({
   title: "",
   description: "",
   category_id: "",
@@ -418,17 +538,56 @@ const form = reactive<{ [key: string]: any }>({
   start_time: "",
   end_time: "",
   status: "published",
-  featured_image: undefined,
 });
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const selectedImage = ref<File | null>(null);
-const imagePreview = ref<string | null>(null);
+const newFiles = ref<File[]>([]);
+const newImagePreviews = ref<string[]>([]);
+const existingImages = ref<any[]>([]);
+const imagesToDelete = ref<string[]>([]);
 const tagInput = ref("");
 const selectedTags = ref<string[]>([]);
 const error = ref<string | null>(null);
 const isSubmittingLocal = ref(false);
-const originalFeaturedImage = ref<string | null>(null);
+
+// Validation schema
+const schema = yup.object({
+  title: yup
+    .string()
+    .required("Title is required")
+    .min(3, "Title must be at least 3 characters")
+    .max(255, "Title must be at most 255 characters"),
+  description: yup
+    .string()
+    .required("Description is required")
+    .min(20, "Description must be at least 20 characters"),
+  category_id: yup.string().required("Category is required"),
+  venue: yup
+    .string()
+    .required("Venue is required")
+    .max(255, "Venue name must be at most 255 characters"),
+  address: yup
+    .string()
+    .required("Address is required"),
+  event_date: yup
+    .string()
+    .required("Event date is required")
+    .test("future-date", "Event date must be in the future", function(value) {
+      if (!value) return true;
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate >= today;
+    }),
+  price: yup.number().when('is_free', {
+    is: false,
+    then: (schema) => schema
+      .required("Price is required")
+      .min(0.01, "Price must be greater than 0")
+      .max(999999.99, "Price is too high"),
+    otherwise: (schema) => schema.nullable().notRequired()
+  }),
+});
 
 // Fetch event data
 const { 
@@ -453,26 +612,14 @@ onError((error) => {
 
 const event = computed(() => eventResult.value?.events_by_pk);
 
-// Validation schema
-const schema = yup.object({
-  title: yup
-    .string()
-    .required("Title is required")
-    .min(3, "Title must be at least 3 characters"),
-  description: yup
-    .string()
-    .required("Description is required")
-    .min(20, "Description must be at least 20 characters"),
-  category_id: yup.string().required("Category is required"),
-  venue: yup.string().required("Venue is required"),
-  address: yup.string().required("Address is required"),
-  event_date: yup.string().required("Event date is required"),
-  featured_image: yup.mixed().required("Featured image is required"),
-});
-
 // Populate form with event data
 const populateForm = () => {
-  if (!event.value) return;
+  if (!event.value) {
+    console.log('No event data available');
+    return;
+  }
+
+  console.log('Populating form with event:', event.value);
 
   form.title = event.value.title || "";
   form.description = event.value.description || "";
@@ -488,12 +635,20 @@ const populateForm = () => {
   form.end_time = event.value.end_time || "";
   form.status = event.value.status || "published";
   
-  // Store original image for reference
-  originalFeaturedImage.value = event.value.featured_image || null;
+  // Load existing images from event_images relationship
+  console.log('Event images from query:', event.value.event_images);
   
-  // If there's a featured image, show it as preview
-  if (event.value.featured_image) {
-    imagePreview.value = event.value.featured_image;
+  if (event.value.event_images && event.value.event_images.length > 0) {
+    existingImages.value = event.value.event_images.map((img: any) => ({
+      id: img.id,
+      image_url: img.image_url,
+      is_featured: img.is_featured || false,
+      created_at: img.created_at
+    }));
+    console.log('Loaded existing images:', existingImages.value);
+  } else {
+    console.log('No existing images found');
+    existingImages.value = [];
   }
 
   // Parse tags if they exist
@@ -509,59 +664,103 @@ const populateForm = () => {
   }
 };
 
-// Watch for event data and populate form
+// Watch for event data changes
 watch(event, (newEvent) => {
+  console.log('Event data changed:', newEvent);
   if (newEvent) {
     populateForm();
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
+
+// Watch for event_images specifically
+watch(
+  () => event.value?.event_images,
+  (newImages) => {
+    console.log('Event images changed:', newImages);
+    if (newImages && Array.isArray(newImages)) {
+      existingImages.value = newImages.map((img: any) => ({
+        id: img.id,
+        image_url: img.image_url,
+        is_featured: img.is_featured || false,
+        created_at: img.created_at
+      }));
+      console.log('Updated existing images:', existingImages.value);
+    }
+  },
+  { deep: true }
+);
 
 // Image handlers
 const handleImageUpload = (event: Event) => {
   const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (file) processImageFile(file);
+  const files = target.files;
+  if (files) {
+    const { valid, errors: validationErrors } = validateImages(Array.from(files));
+    
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(err => toast.warning(err));
+    }
+
+    for (const file of valid) {
+      newFiles.value.push(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newImagePreviews.value.push(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    console.log('New files to upload:', newFiles.value.length);
+  }
   target.value = "";
 };
 
 const handleDrop = (event: DragEvent) => {
-  const file = event.dataTransfer?.files?.[0];
-  if (file) processImageFile(file);
-};
+  event.preventDefault();
+  const files = event.dataTransfer?.files;
+  if (files) {
+    const { valid, errors: validationErrors } = validateImages(Array.from(files));
+    
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(err => toast.warning(err));
+    }
 
-const processImageFile = (file: File) => {
-  if (!validateImage(file)) return;
-
-  error.value = null;
-  selectedImage.value = file;
-  form.featured_image = file;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
-};
-
-const validateImage = (file: File): boolean => {
-  if (file.size > 10 * 1024 * 1024) {
-    error.value = "Image size must be less than 10MB";
-    return false;
+    for (const file of valid) {
+      newFiles.value.push(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newImagePreviews.value.push(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    console.log('New files from drop:', newFiles.value.length);
   }
-  const validTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!validTypes.includes(file.type)) {
-    error.value = "Only JPEG, PNG, and WebP images are allowed";
-    return false;
-  }
-  return true;
 };
 
-const removeImage = () => {
-  selectedImage.value = null;
-  imagePreview.value = originalFeaturedImage.value;
-  form.featured_image = originalFeaturedImage.value || undefined;
-  if (fileInput.value) {
-    fileInput.value.value = "";
+const removeNewImage = (index: number) => {
+  newFiles.value.splice(index, 1);
+  newImagePreviews.value.splice(index, 1);
+  console.log('Removed new image, remaining:', newFiles.value.length);
+};
+
+const removeExistingImage = async (index: number) => {
+  const image = existingImages.value[index];
+  if (!image) return;
+  
+  if (image.id) {
+    const confirmed = confirm('Are you sure you want to delete this image?');
+    if (!confirmed) return;
+    
+    console.log("Image:", image);
+console.log("Image ID:", image.id);
+    
+    const deleted = await deleteImage(image.id);
+    if (deleted) {
+      existingImages.value.splice(index, 1);
+      toast.success('Image deleted successfully');
+      console.log('Image deleted, remaining:', existingImages.value.length);
+    }
+  } else {
+    existingImages.value.splice(index, 1);
   }
 };
 
@@ -570,12 +769,14 @@ const addTag = () => {
   const normalized = tagInput.value.trim().toLowerCase();
   if (normalized && !selectedTags.value.includes(normalized)) {
     selectedTags.value.push(normalized);
+    console.log('Tag added:', normalized);
   }
   tagInput.value = "";
 };
 
 const removeTag = (index: number) => {
   selectedTags.value.splice(index, 1);
+  console.log('Tag removed');
 };
 
 // Location handler
@@ -587,41 +788,26 @@ const updateLocation = (location: {
   form.latitude = location.latitude;
   form.longitude = location.longitude;
   form.address = location.address;
-};
-
-// Image to base64 conversion
-const imageToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
+  console.log('Location updated:', location);
 };
 
 // Update mutation
-const { mutate: updateEventMutation } = useMutation(UPDATE_EVENT_MUTATION);
+const { mutate: updateEventMutation } = useMutation(UPDATE_EVENT);
 
 const handleSubmit = async () => {
   try {
     error.value = null;
     
-    // Validate required fields
     if (!form.title || !form.description || !form.venue || !form.address || !form.event_date) {
       error.value = "Please fill in all required fields";
+      toast.error(error.value);
       return;
     }
 
     isSubmittingLocal.value = true;
 
-    let featuredImage = originalFeaturedImage.value;
-    
-    // If new image selected, convert to base64
-    if (selectedImage.value) {
-      featuredImage = await imageToBase64(selectedImage.value);
-    }
-
-    const input = {
+    // Prepare the input object
+    const input: any = {
       title: form.title,
       description: form.description,
       category_id: form.category_id || null,
@@ -632,16 +818,16 @@ const handleSubmit = async () => {
       latitude: form.latitude,
       longitude: form.longitude,
       event_date: form.event_date,
-      start_time: form.start_time || null,
-      end_time: form.end_time || null,
       status: form.status,
-      featured_image: featuredImage,
-      tags: selectedTags.value,
     };
 
-    console.log("Updating event with ID:", eventId.value);
+    if (form.start_time) input.start_time = form.start_time;
+    if (form.end_time) input.end_time = form.end_time;
+
+    console.log("Updating event:", eventId.value);
     console.log("Update input:", input);
 
+    // Update the event
     const result = await updateEventMutation({
       id: eventId.value,
       input: input,
@@ -649,13 +835,30 @@ const handleSubmit = async () => {
 
     console.log("Update result:", result);
 
-    // Check for success based on the mutation type
-    if (result?.data?.update_events_by_pk?.id) {
+    let updatedEvent = null;
+    
+    if (result?.data?.update_events_by_pk) {
+      updatedEvent = result.data.update_events_by_pk;
+    }
+
+    if (updatedEvent) {
+      // Upload new images if any
+      if (newFiles.value.length > 0) {
+        toast.info(`Uploading ${newFiles.value.length} image(s)...`);
+        const uploaded = await uploadImages(eventId.value || null, newFiles.value);
+        console.log("from upload new image response",uploaded)
+        if (uploaded && uploaded.length > 0) {
+          // Add new images to existing images
+          existingImages.value.push(...uploaded);
+          newFiles.value = [];
+          newImagePreviews.value = [];
+          toast.success(`${uploaded.length} image(s) uploaded successfully`);
+          console.log('Uploaded images:', uploaded);
+        }
+      }
+
       toast.success('Event updated successfully!');
-      router.push(`/events/${result.data.update_events_by_pk.id}`);
-    } else if (result?.data?.update_events?.returning?.length > 0) {
-      toast.success('Event updated successfully!');
-      router.push(`/events/${result.data.update_events.returning[0].id}`);
+      // router.push(`/events/${updatedEvent.id}`);
     } else {
       error.value = "Failed to update event. No data returned.";
       toast.error(error.value);
@@ -672,6 +875,7 @@ const handleSubmit = async () => {
 // Refetch on mount
 onMounted(async () => {
   if (eventId.value) {
+    console.log('Fetching event data for ID:', eventId.value);
     await refetch();
   }
 });

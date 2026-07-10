@@ -1,81 +1,129 @@
+// graphql/client.go
 package graphql
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/hasura/go-graphql-client"
+	"io"
 	"net/http"
+	"time"
 )
 
 type Client struct {
-	client *graphql.Client
-	secret string
+	client   *http.Client
+	endpoint string
+	secret   string
 }
 
 var gqlClient *Client
 
+type GraphQLRequest struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables,omitempty"`
+}
+
+type GraphQLResponse struct {
+	Data   interface{}    `json:"data,omitempty"`
+	Errors []GraphQLError `json:"errors,omitempty"`
+}
+
+type GraphQLError struct {
+	Message    string                 `json:"message"`
+	Locations  []map[string]int       `json:"locations"`
+	Path       []string               `json:"path"`
+	Extensions map[string]interface{} `json:"extensions"`
+}
+
 func NewClient(endpoint, secret string) *Client {
-	// create an HTTP client that injects the Hasura admin secret into every request
-	httpClient := &http.Client{
-		Transport: &authTransport{secret: secret, rt: http.DefaultTransport},
-	}
 	return &Client{
-		client: graphql.NewClient(endpoint, httpClient),
-		secret: secret,
+		client: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+		endpoint: endpoint,
+		secret:   secret,
 	}
 }
 
-// set the client for the package-level functions
 func SetClient(client *Client) {
 	gqlClient = client
 }
 
-// authTransport adds the X-Hasura-Admin-Secret header to every request.
-type authTransport struct {
-	secret string
-	rt     http.RoundTripper
+// MutateRaw - for raw GraphQL mutation strings
+func (c *Client) MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}, result interface{}) error {
+	return c.executeRawGraphQL(ctx, mutation, vars, result)
 }
 
-func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// clone the request to avoid mutating the original
-	r2 := req.Clone(req.Context())
-	if a.secret != "" {
-		r2.Header.Set("X-Hasura-Admin-Secret", a.secret)
+// QueryRaw - for raw GraphQL query strings
+func (c *Client) QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
+	return c.executeRawGraphQL(ctx, query, vars, result)
+}
+
+// executeRawGraphQL executes raw GraphQL queries/mutations
+func (c *Client) executeRawGraphQL(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: vars,
 	}
-	return a.rt.RoundTrip(r2)
-}
 
-func (c *Client) Mutate(ctx context.Context, mutation interface{}, vars map[string]interface{}) error {
-	return c.client.Mutate(ctx, mutation, vars)
-}
-
-func (c *Client) Query(ctx context.Context, query interface{}, vars map[string]interface{}) error {
-	return c.client.Query(ctx, query, vars)
-}
-
-func Mutate(ctx context.Context, mutation interface{}, vars map[string]interface{}) error {
-	if gqlClient == nil {
-		return fmt.Errorf("graphql client not initialized")
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	return gqlClient.Mutate(ctx, mutation, vars)
-}
 
-func Query(ctx context.Context, query interface{}, vars map[string]interface{}) error {
-	if gqlClient == nil {
-		return fmt.Errorf("graphql client not initialized")
+	// Log the request for debugging
+	fmt.Printf("📤 Sending GraphQL request:\n%s\n", string(jsonData))
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
 	}
-	return gqlClient.Query(ctx, query, vars)
-}
 
-// Add these functions to your graphql package
-
-func QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
-	if gqlClient == nil {
-		return fmt.Errorf("graphql client not initialized")
+	req.Header.Set("Content-Type", "application/json")
+	if c.secret != "" {
+		req.Header.Set("X-Hasura-Admin-Secret", c.secret)
 	}
-	return gqlClient.QueryRaw(ctx, query, vars, result)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Log the response
+	fmt.Printf("📥 GraphQL Response Status: %d\n", resp.StatusCode)
+	fmt.Printf("📥 GraphQL Response Body: %s\n", string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var gqlResp GraphQLResponse
+	gqlResp.Data = result
+	if err := json.Unmarshal(body, &gqlResp); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		errorMsg := gqlResp.Errors[0].Message
+		if len(gqlResp.Errors) > 1 {
+			for _, err := range gqlResp.Errors[1:] {
+				errorMsg += "; " + err.Message
+			}
+		}
+		return fmt.Errorf("graphql error: %s", errorMsg)
+	}
+
+	return nil
 }
 
+// Package-level functions
 func MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}, result interface{}) error {
 	if gqlClient == nil {
 		return fmt.Errorf("graphql client not initialized")
@@ -83,11 +131,9 @@ func MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}
 	return gqlClient.MutateRaw(ctx, mutation, vars, result)
 }
 
-// Add these methods to your Client struct
-func (c *Client) QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
-	return c.client.Query(ctx, result, vars)
-}
-
-func (c *Client) MutateRaw(ctx context.Context, mutation string, vars map[string]interface{}, result interface{}) error {
-	return c.client.Mutate(ctx, result, vars)
+func QueryRaw(ctx context.Context, query string, vars map[string]interface{}, result interface{}) error {
+	if gqlClient == nil {
+		return fmt.Errorf("graphql client not initialized")
+	}
+	return gqlClient.QueryRaw(ctx, query, vars, result)
 }

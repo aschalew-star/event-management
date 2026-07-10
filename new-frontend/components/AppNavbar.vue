@@ -138,21 +138,21 @@
                   </NuxtLink>
                   
                   <NuxtLink
-                    to="/my-events"
+                    to="/my-followers"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200"
                     @click="closeDropdown"
                   >
                     <Icon name="lucide:calendar" class="w-4 h-4" />
-                    <span class="text-sm">My Events</span>
+                    <span class="text-sm">My Followers</span>
                   </NuxtLink>
                   
                   <NuxtLink
-                    to="/my-bookmarks"
+                    to="/my-tickets"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200"
                     @click="closeDropdown"
                   >
                     <Icon name="lucide:bookmark" class="w-4 h-4" />
-                    <span class="text-sm">Bookmarks</span>
+                    <span class="text-sm">My Tickets</span>
                   </NuxtLink>
                   
                   <NuxtLink
@@ -242,12 +242,12 @@
           </NuxtLink>
           
           <NuxtLink
-            to="/my-bookmarks"
+            to="/my-tickets"
             class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
             @click="isMobileMenuOpen = false"
           >
             <Icon name="lucide:bookmark" class="w-5 h-5" />
-            <span>Bookmarks</span>
+            <span>My Tickets</span>
           </NuxtLink>
 
           <NuxtLink

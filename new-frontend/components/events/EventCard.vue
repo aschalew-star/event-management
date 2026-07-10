@@ -1,16 +1,24 @@
+<!-- components/events/EventCard.vue -->
 <template>
   <div
     class="group bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 transform hover:-translate-y-1"
     @click="$emit('click')"
   >
     <!-- Image -->
-    <div class="relative h-48 overflow-hidden">
+    <div class="relative h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
       <img
-        :src="event.featured_image || '/images/event-placeholder.jpg'"
+        :src="eventImage || '/images/event-placeholder.jpg'"
         :alt="event.title"
         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         loading="lazy"
+        @error="handleImageError"
       />
+      
+      <!-- Image counter badge if multiple images -->
+      <div v-if="event.images && event.images.length > 1" 
+           class="absolute bottom-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium">
+        {{ event.images.length }} photos
+      </div>
       
       <!-- Status Badge -->
       <div class="absolute top-3 left-3 flex gap-2">
@@ -82,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
   event: {
@@ -97,26 +105,40 @@ const props = defineProps<{
     start_time: string;
     end_time: string;
     status: string;
-    featured_image: string;
-    category: {
+    featured_image?: string | null;
+    images?: any[];
+    category?: {
       id: string;
       name: string;
       icon: string;
       color: string;
-    };
-    user: {
+    } | null;
+    user?: {
       id: string;
       name: string;
       email: string;
       avatar_url: string;
-    };
+    } | null;
   };
-  viewMode: 'grid' | 'list';
+  viewMode?: 'grid' | 'list';
 }>();
 
 const emit = defineEmits<{
   (e: 'click'): void;
 }>();
+
+// Computed image with fallback
+const eventImage = computed(() => {
+  // Use featured_image if available, otherwise check if there are images
+  if (props.event.featured_image) {
+    return props.event.featured_image;
+  }
+  // If there are images but no featured_image, use the first one
+  if (props.event.images && props.event.images.length > 0) {
+    return props.event.images[0].url;
+  }
+  return null;
+});
 
 const statusColors: Record<string, string> = {
   published: 'bg-green-500/80 text-white',
@@ -134,5 +156,11 @@ const formatDate = (dateStr: string) => {
     day: 'numeric', 
     year: 'numeric' 
   });
+};
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement;
+  console.log('❌ Image failed to load:', img.src);
+  img.src = '/images/event-placeholder.jpg';
 };
 </script>

@@ -4,6 +4,7 @@
 - "!include public_event_tags.yaml"
 - "!include public_events.yaml"
 - "!include public_follows.yaml"
+- "!include public_payments.yaml"
 - "!include public_tags.yaml"
 - "!include public_tickets.yaml"
 - "!include public_users.yaml"

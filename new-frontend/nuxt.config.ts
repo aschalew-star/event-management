@@ -1,8 +1,8 @@
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      hasuraEndpoint: process.env.NUXT_PUBLIC_HASURA_ENDPOINT || '/api/graphql',
-      hasuraAdminSecret: process.env.NUXT_PUBLIC_HASURA_ADMIN_SECRET || '',
+      hasuraEndpoint: import.meta.UXT_PUBLIC_HASURA_ENDPOINT || '/api/graphql',
+      // hasuraAdminSecret: process.env.NUXT_PUBLIC_HASURA_ADMIN_SECRET || '',
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8080',
       golangApiUrl: process.env.GOLANG_API_URL || 'http://golang-backend:8081'
     }
@@ -11,6 +11,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
+    '@nuxt/icon'
   ],
   
   css: [
@@ -22,6 +23,16 @@ export default defineNuxtConfig({
         proxy: process.env.HASURA_GRAPHQL_ENDPOINT || 'http://localhost:8080/v1/graphql'
       }
     }
+  },
+  
+   icon: {
+    // Optional: Configure icon sets
+    serverBundle: {
+      collections: ['lucide'], // Bundle only lucide icons
+    },
+    clientBundle: {
+      collections: ['lucide'],
+    },
   },
   
   tailwindcss: {

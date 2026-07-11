@@ -132,60 +132,14 @@
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
 
-        <!-- Events Grid -->
-        <div v-else-if="popularEvents.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div
-            v-for="event in popularEvents"
+        <!-- Events Grid using EventCard -->
+        <div v-else-if="enrichedEvents.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <EventCard
+            v-for="event in enrichedEvents"
             :key="event.id"
-            class="group bg-gray-50 dark:bg-gray-700 rounded-2xl overflow-hidden shadow hover:shadow-xl transition-all hover:-translate-y-1"
-          >
-            <NuxtLink :to="`/events/${event.id}`">
-              <div class="relative h-48 overflow-hidden">
-                <img
-                  :src="event.featured_image || '/images/placeholder-event.jpg'"
-                  :alt="event.title"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  @error="handleImageError"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div class="absolute top-3 left-3 flex gap-2">
-                  <span
-                    v-if="event.is_free"
-                    class="px-2.5 py-1 bg-green-500 text-white rounded-full text-xs font-medium"
-                  >
-                    Free
-                  </span>
-                  <span
-                    v-else
-                    class="px-2.5 py-1 bg-blue-500 text-white rounded-full text-xs font-medium"
-                  >
-                    ${{ Number(event.price || 0).toFixed(2) }}
-                  </span>
-                </div>
-                <div class="absolute bottom-3 left-3">
-                  <span class="text-white text-xs font-medium bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
-                    <Icon name="lucide:calendar" class="w-3 h-3 inline mr-1" />
-                    {{ formatDate(event.event_date) }}
-                  </span>
-                </div>
-              </div>
-              <div class="p-4">
-                <h3 class="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-blue-600 transition-colors">
-                  {{ event.title }}
-                </h3>
-                <div class="flex items-center gap-1 mt-1">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">by</span>
-                  <span class="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    {{ event.user?.name || 'Unknown' }}
-                  </span>
-                </div>
-                <div class="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Icon name="lucide:map-pin" class="w-4 h-4 flex-shrink-0" />
-                  <span class="line-clamp-1">{{ event.venue || 'Venue TBD' }}</span>
-                </div>
-              </div>
-            </NuxtLink>
-          </div>
+            :event="event"
+            @click="navigateToEvent(event.id)"
+          />
         </div>
 
         <!-- Empty State -->
@@ -223,18 +177,19 @@
         </NuxtLink>
       </div>
     </section>
-
-    <!-- Footer is in layout, no need to include here -->
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useQuery } from '@vue/apollo-composable';
 import { useToast } from 'vue-toastification';
 import { GET_POPULAR_EVENTS } from '~/graphql/eventQueries';
+import EventCard from '~/components/events/EventCard.vue';
 
+const router = useRouter();
 const authStore = useAuthStore();
 const toast = useToast();
 
@@ -247,6 +202,7 @@ const {
   onError 
 } = useQuery(
   GET_POPULAR_EVENTS,
+  null,
   {
     fetchPolicy: 'network-only',
     notifyOnNetworkStatusChange: true,
@@ -262,22 +218,28 @@ const popularEvents = computed(() => {
   return eventsResult.value?.events || [];
 });
 
-const handleImageError = (event: Event) => {
-  const img = event.target as HTMLImageElement;
-  img.src = '/images/placeholder-event.jpg';
-};
+// Enrich events with proper data structure for EventCard
+const enrichedEvents = computed(() => {
+  return popularEvents.value.map((event: any) => {
+    // Get images from event_images relationship
+    const images = event.event_images || [];
+    const featuredImage = images.find((img: any) => img.is_featured)?.image_url || 
+                          images[0]?.image_url || 
+                          null;
+    
+    return {
+      ...event,
+      featured_image: featuredImage,
+      images: images,
+      // Add counts from aggregates
+      bookmarks_count: event.bookmarks_aggregate?.aggregate?.count || 0,
+      tickets_count: event.tickets_aggregate?.aggregate?.count || 0
+    };
+  });
+});
 
-const formatDate = (date: string) => {
-  if (!date) return 'TBD';
-  try {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  } catch {
-    return 'Invalid date';
-  }
+const navigateToEvent = (eventId: string) => {
+  router.push(`/events/${eventId}`);
 };
 
 // Refetch on mount
@@ -287,5 +249,30 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
 
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
 </style>

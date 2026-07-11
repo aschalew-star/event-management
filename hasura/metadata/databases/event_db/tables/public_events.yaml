@@ -81,6 +81,7 @@ select_permissions:
         - status
         - title
         - updated_at
+        - user_id
         - venue
         - view_count
       filter:

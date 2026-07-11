@@ -20,6 +20,12 @@ insert_permissions:
         - id
     comment: ""
 select_permissions:
+  - role: anonymous
+    permission:
+      columns: []
+      filter: {}
+      allow_aggregations: true
+    comment: ""
   - role: user
     permission:
       columns:

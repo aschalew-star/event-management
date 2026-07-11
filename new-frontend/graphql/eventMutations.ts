@@ -149,6 +149,7 @@ export const CREATE_TICKET = gql`
     $quantity: Int!
     $totalPrice: numeric!
     $status: String!
+    $payment_id: uuid!
   ) {
     insert_tickets_one(
       object: {
@@ -156,6 +157,7 @@ export const CREATE_TICKET = gql`
         quantity: $quantity
         total_price: $totalPrice
         status: $status
+        payment_id: $payment_id
       }
     ) {
       id
@@ -168,6 +170,57 @@ export const CREATE_TICKET = gql`
     }
   }
 `;
+
+export const CREATE_TICKET_WITH_PAYMENT = gql`
+  mutation CreateTicketWithPayment(
+    $eventId: uuid!
+    $quantity: Int!
+    $totalPrice: numeric!
+    $status: String!
+    $paymentId: String!
+  ) {
+    insert_tickets_one(
+      object: {
+        event_id: $eventId
+        quantity: $quantity
+        total_price: $totalPrice
+        status: $status
+        payment_id: $paymentId
+      }
+    ) {
+      id
+      event_id
+      user_id
+      quantity
+      total_price
+      status
+      payment_id
+      created_at
+    }
+  }
+`;
+
+export const CREATE_PAYMENT = gql`
+  mutation CreatePayment {
+    insert_payments_one(
+      object: {
+        status: "completed"
+        amount: 0
+        currency: "ETB"
+        payment_method: "FREE"
+      }
+    ) {
+      id
+      user_id
+      amount
+      status
+      payment_method
+      created_at
+    }
+  }
+`;
+
+// new-frontend/graphql/eventMutations.ts
 
 // eventMutations.ts
 
@@ -322,6 +375,35 @@ export const UPDATE_EVENT = gql`
       created_at
       updated_at
       user_id
+    }
+  }
+`;
+
+// graphql/eventMutations.ts
+
+export const FOLLOW_USER = gql`
+  mutation FollowUser($followerId: uuid!, $followedUserId: uuid!) {
+    insert_follows_one(object: {
+      follower_id: $followerId
+      followed_user_id: $followedUserId
+    }) {
+      id
+      follower_id
+      followed_user_id
+      created_at
+    }
+  }
+`;
+
+export const UNFOLLOW_USER = gql`
+  mutation UnfollowUser($followerId: uuid!, $followedUserId: uuid!) {
+    delete_follows(
+      where: {
+        follower_id: { _eq: $followerId }
+        followed_user_id: { _eq: $followedUserId }
+      }
+    ) {
+      affected_rows
     }
   }
 `;

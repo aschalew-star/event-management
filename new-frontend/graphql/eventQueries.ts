@@ -16,28 +16,7 @@ export const GET_EVENT_CATEGORIES = gql`
     }
   }
 `;
-export const GET_POPULAR_EVENTS = gql`
-  query GetPopularEvents($limit: Int) {
-    events(
-      where: { status: { _eq: "published" } }
-      limit: $limit
-      order_by: { view_count: desc }
-    ) {
-      id
-      title
-      description
-      venue
-      event_date
-      featured_image
-      is_free
-      price
-      category {
-        name
-        color
-      }
-    }
-  }
-`;
+
 
 export const GET_ALL_EVENTS = gql`
   query GetAllEvents($filters: events_bool_exp!, $limit: Int!, $offset: Int!) {
@@ -166,33 +145,33 @@ export const CHECK_EVENT_ATTENDANCE = gql`
 `;
 
 
-// graphql/eventQueries.ts
+// // graphql/eventQueries.ts
 
-export const GET_USER_BOOKMARKS = gql`
-  query GetUserBookmarks($userId: uuid!) {
-    bookmarks(
-      where: { user_id: { _eq: $userId } }
-      order_by: { created_at: desc }
-    ) {
-      id
-      event_id
-      created_at
-      event {
-        id
-        title
-        featured_image
-        is_free
-        price
-        event_date
-        venue
-        user {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
+// export const GET_USER_BOOKMARKS = gql`
+//   query GetUserBookmarks($userId: uuid!) {
+//     bookmarks(
+//       where: { user_id: { _eq: $userId } }
+//       order_by: { created_at: desc }
+//     ) {
+//       id
+//       event_id
+//       created_at
+//       event {
+//         id
+//         title
+//         featured_image
+//         is_free
+//         price
+//         event_date
+//         venue
+//         user {
+//           id
+//           name
+//         }
+//       }
+//     }
+//   }
+// `;
 
 export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
   query GetUserEventsWithFollowers($userId: uuid!) {
@@ -233,74 +212,6 @@ export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
             count
           }
         }
-      }
-      
-      # Category relationship
-      category {
-        id
-        name
-        description
-        icon
-        color
-      }
-      
-      # Event images
-      event_images {
-        id
-        image_url
-        is_featured
-      }
-      
-      # Bookmarks aggregate
-      bookmarks_aggregate {
-        aggregate {
-          count
-        }
-      }
-      
-      # Tickets aggregate (to show ticket sales)
-      tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
-        aggregate {
-          count
-        }
-      }
-    }
-  }
-`;
-
-export const GET_USER_EVENTS = gql`
-  query GetUserEvents($userId: uuid!) {
-    events(
-      where: { 
-        user_id: { _eq: $userId }
-      }
-      order_by: { event_date: asc }
-    ) {
-      id
-      title
-      description
-      is_free
-      price
-      event_date
-      venue
-      address
-      latitude
-      longitude
-      status
-      start_time
-      end_time
-      view_count
-      created_at
-      updated_at
-      user_id
-      category_id
-      
-      # User relationship (event creator)
-      user {
-        id
-        name
-        email
-        avatar_url
       }
       
       # Category relationship
@@ -563,6 +474,379 @@ export const GET_EVENT_BY_ID = gql`
       tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
         aggregate {
           count
+        }
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+export const GET_USER_BOOKMARKS = gql`
+  query GetUserBookmarks($userId: uuid!) {
+    bookmarks(
+      where: { user_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      created_at
+      user_id
+      event_id
+      event {
+        id
+        title
+        description
+        price
+        is_free
+        venue
+        address
+        latitude
+        longitude
+        event_date
+        start_time
+        end_time
+        status
+        view_count
+        created_at
+        updated_at
+        category_id
+        user_id
+        
+        # User relationship
+        user {
+          id
+          name
+          email
+          avatar_url
+        }
+        
+        # Category relationship
+        category {
+          id
+          name
+          icon
+          color
+        }
+        
+        # Event images
+        event_images {
+          id
+          image_url
+          is_featured
+        }
+        
+        # Bookmarks aggregate
+        bookmarks_aggregate {
+          aggregate {
+            count
+          }
+        }
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+export const GET_POPULAR_EVENTS = gql`
+  query GetPopularEvents {
+    events(
+      where: { 
+        status: { _eq: "published" }
+      }
+      order_by: { view_count: desc }
+      limit: 6
+    ) {
+      id
+      title
+      description
+      price
+      is_free
+      venue
+      address
+      latitude
+      longitude
+      event_date
+      start_time
+      end_time
+      status
+      view_count
+      created_at
+      updated_at
+      user_id
+      category_id
+      
+      user {
+        id
+        name
+        avatar_url
+      }
+      
+      category {
+        id
+        name
+        icon
+        color
+      }
+      
+      event_images {
+        id
+        image_url
+        is_featured
+        created_at
+      }
+      
+      bookmarks_aggregate {
+        aggregate {
+          count
+        }
+      }
+      
+      tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
+        aggregate {
+          count
+        }
+      }
+    }
+  }
+`;
+
+
+
+
+// graphql/eventQueries.ts
+
+export const GET_USER_PROFILE = gql`
+  query GetUserProfile($id: uuid!) {
+    users_by_pk(id: $id) {
+      id
+      name
+      email
+      avatar_url
+      bio
+      created_at
+      followers_aggregate {
+        aggregate {
+          count
+        }
+      }
+      following_aggregate {
+        aggregate {
+          count
+        }
+      }
+    }
+  }
+`;
+      
+
+
+export const GET_USER_EVENTS = gql`
+  query GetUserEvents($userId: uuid!) {
+    events(
+      where: { user_id: { _eq: $userId }, status: { _neq: "draft" } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      title
+      description
+      price
+      is_free
+      venue
+      address
+      latitude
+      longitude
+      event_date
+      start_time
+      end_time
+      status
+      view_count
+      created_at
+      updated_at
+      category_id
+      user_id
+      
+      category {
+        id
+        name
+        icon
+        color
+      }
+      
+      event_images {
+        id
+        image_url
+        is_featured
+        created_at
+      }
+      
+      bookmarks_aggregate {
+        aggregate {
+          count
+        }
+      }
+      
+      tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
+        aggregate {
+          count
+        }
+      }
+    }
+  }
+`;
+
+
+export const GET_USER_FOLLOWERS = gql`
+  query GetUserFollowers($userId: uuid!) {
+    follows(
+      where: { followed_user_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      follower_id
+      followed_user_id
+      created_at
+      userByFollowerId {
+        id
+        name
+        email
+        avatar_url
+        bio
+        created_at
+      }
+    }
+  }
+`;
+
+// graphql/eventQueries.ts
+
+export const GET_USER_PROFILES = gql`
+  query GetUserProfile($id: uuid!) {
+    users_by_pk(id: $id) {
+      id
+      name
+      email
+      avatar_url
+      bio
+      created_at
+      followers_aggregate {
+        aggregate {
+          count
+        }
+      }
+      following_aggregate {
+        aggregate {
+          count
+        }
+      }
+    }
+  }
+`;
+
+export const GET_USER_EVENTSS = gql`
+  query GetUserEvents($userId: uuid!) {
+    events(
+      where: { 
+        user_id: { _eq: $userId }
+        status: { _neq: "draft" }
+      }
+      order_by: { created_at: desc }
+    ) {
+      id
+      title
+      description
+      price
+      is_free
+      venue
+      address
+      latitude
+      longitude
+      event_date
+      start_time
+      end_time
+      status
+      view_count
+      created_at
+      updated_at
+      category_id
+      user_id
+      
+      category {
+        id
+        name
+        icon
+        color
+      }
+      
+      event_images {
+        id
+        image_url
+        is_featured
+        created_at
+      }
+      
+      bookmarks_aggregate {
+        aggregate {
+          count
+        }
+      }
+      
+      tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
+        aggregate {
+          count
+        }
+      }
+    }
+  }
+`;
+
+export const GET_FOLLOW_STATUS = gql`
+  query GetFollowStatus($followerId: uuid!, $followedUserId: uuid!) {
+    follows(
+      where: {
+        follower_id: { _eq: $followerId }
+        followed_user_id: { _eq: $followedUserId }
+      }
+    ) {
+      id
+      follower_id
+      followed_user_id
+      created_at
+    }
+  }
+`;
+// graphql/eventQueries.ts
+
+export const GET_USER_FOLLOWING = gql`
+  query GetUserFollowing($userId: uuid!) {
+    follows(
+      where: { follower_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      follower_id
+      followed_user_id
+      created_at
+      userByFollowedUserId {
+        id
+        name
+        email
+        avatar_url
+        bio
+        created_at
+        events(where: { status: { _neq: "draft" } }) {
+          id
+          title
+        }
+        events_aggregate(where: { status: { _neq: "draft" } }) {
+          aggregate {
+            count
+          }
+        }
+        followers_aggregate {
+          aggregate {
+            count
+          }
         }
       }
     }

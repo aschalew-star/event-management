@@ -451,6 +451,7 @@ import {
   BOOKMARK_EVENT,
   UNBOOKMARK_EVENT,
   CREATE_TICKET,
+  CREATE_PAYMENT,
 } from '~/graphql/eventMutations';
 
 // REMOVED auth middleware - anyone can view event details
@@ -732,7 +733,7 @@ const { mutate: unfollowMutation } = useMutation(UNFOLLOW_EVENT);
 const { mutate: bookmarkMutation } = useMutation(BOOKMARK_EVENT);
 const { mutate: unbookmarkMutation } = useMutation(UNBOOKMARK_EVENT);
 const { mutate: createTicketMutation } = useMutation(CREATE_TICKET);
-
+const { mutate: createPaymentMutation } = useMutation(CREATE_PAYMENT);
 // Status Colors mapping
 const statusColors: Record<string, string> = {
   published: 'bg-green-500/80 text-white',
@@ -789,19 +790,26 @@ const handleTicketAction = async () => {
   try {
     if (event.value?.is_free) {
       ticketLoading.value = true;
+     const paymentResult = await createPaymentMutation({});
+      if (!paymentResult?.data?.insert_payments_one) {
+       toast.error('Payment record creation failed for free ticket.');
+      }
 
       const result = await createTicketMutation({
         eventId: targetEventId,
-        // userId: userId,
+        // user_id: userId,
         quantity: 1,
         totalPrice: 0,
         status: 'confirmed',
+        payment_id: paymentResult?.data?.insert_payments_one?.id
       });
 
       if (result?.data?.insert_tickets_one) {
         await refetchTicket();
         toast.success('🎉 Free ticket claimed successfully!');
       }
+
+      console.log("result from payment",paymentResult,"result from ticket ",result)
     } else {
       router.push({
         path: `/payment/${targetEventId}`,

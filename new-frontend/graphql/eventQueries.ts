@@ -1,9 +1,6 @@
 // graphql/eventQueries.ts
-import { gql } from '@apollo/client/core';
-import { graphql } from 'graphql/graphql';
-
-
-
+import { gql } from "@apollo/client/core";
+import { graphql } from "graphql/graphql";
 
 export const GET_EVENT_CATEGORIES = gql`
   query GetEventCategories {
@@ -16,7 +13,6 @@ export const GET_EVENT_CATEGORIES = gql`
     }
   }
 `;
-
 
 export const GET_ALL_EVENTS = gql`
   query GetAllEvents($filters: events_bool_exp!, $limit: Int!, $offset: Int!) {
@@ -60,7 +56,6 @@ export const GET_ALL_EVENTS = gql`
     }
   }
 `;
-
 
 export const GET_UPCOMING_EVENTS = gql`
   query GetUpcomingEvents($limit: Int) {
@@ -127,23 +122,15 @@ export const GET_EVENT_COMMENTS = gql`
   }
 `;
 
-
-
-
-
 export const CHECK_EVENT_ATTENDANCE = gql`
   query CheckEventAttendance($eventId: uuid!, $userId: uuid!) {
     bookmarks(
-      where: {
-        event_id: { _eq: $eventId }
-        user_id: { _eq: $userId }
-      }
+      where: { event_id: { _eq: $eventId }, user_id: { _eq: $userId } }
     ) {
       id
     }
   }
 `;
-
 
 // // graphql/eventQueries.ts
 
@@ -176,9 +163,7 @@ export const CHECK_EVENT_ATTENDANCE = gql`
 export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
   query GetUserEventsWithFollowers($userId: uuid!) {
     events(
-      where: { 
-        user_id: { _eq: $userId }
-      }
+      where: { user_id: { _eq: $userId } }
       order_by: { event_date: asc }
     ) {
       id
@@ -199,7 +184,7 @@ export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
       updated_at
       user_id
       category_id
-      
+
       # User relationship with follower count
       user {
         id
@@ -213,7 +198,7 @@ export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
           }
         }
       }
-      
+
       # Category relationship
       category {
         id
@@ -222,21 +207,21 @@ export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
         icon
         color
       }
-      
+
       # Event images
       event_images {
         id
         image_url
         is_featured
       }
-      
+
       # Bookmarks aggregate
       bookmarks_aggregate {
         aggregate {
           count
         }
       }
-      
+
       # Tickets aggregate (to show ticket sales)
       tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
         aggregate {
@@ -250,10 +235,9 @@ export const GET_USER_EVENTS_WITH_FOLLOWERS = gql`
 // GraphQL Mutations
 export const FOLLOW_EVENT = gql`
   mutation FollowEvent($eventId: uuid!, $userId: uuid!) {
-    insert_follows_one(object: { 
-      followed_user_id: $eventId
-      follower_id: $userId 
-    }) {
+    insert_follows_one(
+      object: { followed_user_id: $eventId, follower_id: $userId }
+    ) {
       id
     }
   }
@@ -269,10 +253,7 @@ export const UNFOLLOW_EVENT = gql`
 
 export const BOOKMARK_EVENT = gql`
   mutation BookmarkEvent($eventId: uuid!, $userId: uuid!) {
-    insert_bookmarks_one(object: { 
-      event_id: $eventId
-      user_id: $userId 
-    }) {
+    insert_bookmarks_one(object: { event_id: $eventId, user_id: $userId }) {
       id
     }
   }
@@ -287,20 +268,27 @@ export const UNBOOKMARK_EVENT = gql`
 `;
 
 export const CREATE_TICKET = gql`
-  mutation CreateTicket($eventId: uuid!, $userId: uuid!, $quantity: Int!, $totalPrice: numeric!, $status: String!) {
-    insert_tickets_one(object: {
-      event_id: $eventId
-      user_id: $userId
-      quantity: $quantity
-      total_price: $totalPrice
-      status: $status
-    }) {
+  mutation CreateTicket(
+    $eventId: uuid!
+    $userId: uuid!
+    $quantity: Int!
+    $totalPrice: numeric!
+    $status: String!
+  ) {
+    insert_tickets_one(
+      object: {
+        event_id: $eventId
+        user_id: $userId
+        quantity: $quantity
+        total_price: $totalPrice
+        status: $status
+      }
+    ) {
       id
       status
     }
   }
 `;
-
 
 export const GET_RELATED_EVENTS = gql`
   query GetRelatedEvents($categoryId: uuid!, $eventId: uuid!, $limit: Int!) {
@@ -324,10 +312,7 @@ export const GET_RELATED_EVENTS = gql`
 export const GET_EVENT_ATTENDEES = gql`
   query GetEventAttendees($eventId: uuid!) {
     tickets(
-      where: { 
-        event_id: { _eq: $eventId }
-        status: { _eq: "confirmed" }
-      }
+      where: { event_id: { _eq: $eventId }, status: { _eq: "confirmed" } }
       distinct_on: user_id
     ) {
       id
@@ -343,7 +328,7 @@ export const GET_EVENT_ATTENDEES = gql`
 export const CHECK_EVENT_FOLLOW = gql`
   query CheckEventFollow($userId: uuid!, $followedUserId: uuid!) {
     follows(
-      where: { 
+      where: {
         follower_id: { _eq: $userId }
         followed_user_id: { _eq: $followedUserId }
       }
@@ -358,10 +343,7 @@ export const CHECK_EVENT_FOLLOW = gql`
 export const CHECK_EVENT_BOOKMARK = gql`
   query CheckEventBookmark($eventId: uuid!, $userId: uuid!) {
     bookmarks(
-      where: { 
-        event_id: { _eq: $eventId }
-        user_id: { _eq: $userId }
-      }
+      where: { event_id: { _eq: $eventId }, user_id: { _eq: $userId } }
     ) {
       id
     }
@@ -413,10 +395,7 @@ export const GET_EVENT_IMAGES = gql`
 export const GET_EVENT_IMAGES_BY_EVENT_IDS = gql`
   query GetEventImagesByEventIds($eventIds: [uuid!]!) {
     event_images(
-      where: { 
-        event_id: { _in: $eventIds }
-        is_featured: { _eq: true }
-      }
+      where: { event_id: { _in: $eventIds }, is_featured: { _eq: true } }
       distinct_on: event_id
     ) {
       event_id
@@ -424,8 +403,6 @@ export const GET_EVENT_IMAGES_BY_EVENT_IDS = gql`
     }
   }
 `;
-
-
 
 export const GET_EVENT_BY_ID = gql`
   query GetEventById($id: uuid!) {
@@ -511,7 +488,7 @@ export const GET_USER_BOOKMARKS = gql`
         updated_at
         category_id
         user_id
-        
+
         # User relationship
         user {
           id
@@ -519,7 +496,7 @@ export const GET_USER_BOOKMARKS = gql`
           email
           avatar_url
         }
-        
+
         # Category relationship
         category {
           id
@@ -527,14 +504,14 @@ export const GET_USER_BOOKMARKS = gql`
           icon
           color
         }
-        
+
         # Event images
         event_images {
           id
           image_url
           is_featured
         }
-        
+
         # Bookmarks aggregate
         bookmarks_aggregate {
           aggregate {
@@ -551,9 +528,7 @@ export const GET_USER_BOOKMARKS = gql`
 export const GET_POPULAR_EVENTS = gql`
   query GetPopularEvents {
     events(
-      where: { 
-        status: { _eq: "published" }
-      }
+      where: { status: { _eq: "published" } }
       order_by: { view_count: desc }
       limit: 6
     ) {
@@ -575,33 +550,33 @@ export const GET_POPULAR_EVENTS = gql`
       updated_at
       user_id
       category_id
-      
+
       user {
         id
         name
         avatar_url
       }
-      
+
       category {
         id
         name
         icon
         color
       }
-      
+
       event_images {
         id
         image_url
         is_featured
         created_at
       }
-      
+
       bookmarks_aggregate {
         aggregate {
           count
         }
       }
-      
+
       tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
         aggregate {
           count
@@ -612,25 +587,22 @@ export const GET_POPULAR_EVENTS = gql`
 `;
 
 
-
-
-// graphql/eventQueries.ts
-
 export const GET_USER_PROFILE = gql`
-  query GetUserProfile($id: uuid!) {
+  query GET_USER_PROFILE($id: uuid!) {
     users_by_pk(id: $id) {
       id
       name
-      email
-      avatar_url
       bio
+      avatar_url
       created_at
-      followers_aggregate {
+      # 1. FIXED: Changed from followers_aggregate to follows_aggregate
+      follows_aggregate {
         aggregate {
           count
         }
       }
-      following_aggregate {
+      # 2. FIXED: Changed from following_aggregate to followsByFollowerId_aggregate
+      followsByFollowerId_aggregate {
         aggregate {
           count
         }
@@ -638,8 +610,6 @@ export const GET_USER_PROFILE = gql`
     }
   }
 `;
-      
-
 
 export const GET_USER_EVENTS = gql`
   query GetUserEvents($userId: uuid!) {
@@ -665,27 +635,27 @@ export const GET_USER_EVENTS = gql`
       updated_at
       category_id
       user_id
-      
+
       category {
         id
         name
         icon
         color
       }
-      
+
       event_images {
         id
         image_url
         is_featured
         created_at
       }
-      
+
       bookmarks_aggregate {
         aggregate {
           count
         }
       }
-      
+
       tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
         aggregate {
           count
@@ -694,7 +664,6 @@ export const GET_USER_EVENTS = gql`
     }
   }
 `;
-
 
 export const GET_USER_FOLLOWERS = gql`
   query GetUserFollowers($userId: uuid!) {
@@ -746,10 +715,7 @@ export const GET_USER_PROFILES = gql`
 export const GET_USER_EVENTSS = gql`
   query GetUserEvents($userId: uuid!) {
     events(
-      where: { 
-        user_id: { _eq: $userId }
-        status: { _neq: "draft" }
-      }
+      where: { user_id: { _eq: $userId }, status: { _neq: "draft" } }
       order_by: { created_at: desc }
     ) {
       id
@@ -770,27 +736,27 @@ export const GET_USER_EVENTSS = gql`
       updated_at
       category_id
       user_id
-      
+
       category {
         id
         name
         icon
         color
       }
-      
+
       event_images {
         id
         image_url
         is_featured
         created_at
       }
-      
+
       bookmarks_aggregate {
         aggregate {
           count
         }
       }
-      
+
       tickets_aggregate(where: { status: { _eq: "confirmed" } }) {
         aggregate {
           count
@@ -849,6 +815,45 @@ export const GET_USER_FOLLOWING = gql`
           }
         }
       }
+    }
+  }
+`;
+
+export const GET_USER_FOLLOWINGs = gql`
+  query GetUserFollowing($userId: uuid!) {
+    follows(
+      where: { follower_id: { _eq: $userId } }
+      order_by: { created_at: desc }
+    ) {
+      id
+      follower_id
+      followed_user_id
+      created_at
+      user {
+        id
+        name
+        email
+        avatar_url
+        bio
+        created_at
+        events(where: { status: { _neq: "draft" } }) {
+          id
+          title
+        }
+      }
+    }
+  }
+`;
+
+export const UNFOLLOW_USER = gql`
+  mutation UnfollowUser($followerId: uuid!, $followedUserId: uuid!) {
+    delete_follows(
+      where: {
+        follower_id: { _eq: $followerId }
+        followed_user_id: { _eq: $followedUserId }
+      }
+    ) {
+      affected_rows
     }
   }
 `;

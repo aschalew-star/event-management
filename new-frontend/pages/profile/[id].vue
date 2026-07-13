@@ -9,12 +9,16 @@
       </div>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="flex items-center justify-center min-h-screen px-4">
+    <!-- Error State or User Not Found -->
+    <div v-else-if="error || !user" class="flex items-center justify-center min-h-screen px-4">
       <div class="text-center max-w-md">
         <div class="text-6xl mb-4">😅</div>
-        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">User not found</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">The user you're looking for doesn't exist.</p>
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+          {{ error ? 'An error occurred' : 'User not found' }}
+        </h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          {{ error ? 'Failed to fetch profile data. Please try again later.' : "The user you're looking for doesn't exist." }}
+        </p>
         <NuxtLink
           to="/events"
           class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
@@ -26,7 +30,7 @@
     </div>
 
     <!-- Profile Content -->
-    <div v-else-if="user" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Back Button -->
       <button
         @click="router.back()"
@@ -67,12 +71,12 @@
       </div>
 
       <!-- Stats Row -->
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500 dark:text-gray-400">Events</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ user.events?.length || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ enrichedEvents.length }}</p>
             </div>
             <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
               <Icon name="lucide:calendar" class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -101,17 +105,6 @@
             </div>
           </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Total Views</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ totalViews }}</p>
-            </div>
-            <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <Icon name="lucide:eye" class="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Bio -->
@@ -120,7 +113,7 @@
         <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ user.bio }}</p>
       </div>
 
-      <!-- Follow Button -->
+      <!-- Follow Button (Only on other user profiles) -->
       <div v-if="!isCurrentUser && authStore.isAuthenticated" class="mb-8">
         <button
           @click="toggleFollow"
@@ -141,7 +134,7 @@
           <div>
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Events by {{ user.name }}</h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {{ user.events?.length || 0 }} events created
+              {{ enrichedEvents.length }} events created
             </p>
           </div>
           <div class="flex gap-2">
@@ -193,7 +186,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useMutation } from '@vue/apollo-composable';
 import { useAuthStore } from '~/stores/auth';
 import { useToast } from 'vue-toastification';
-import { GET_USER_PROFILE, GET_USER_EVENTS } from '~/graphql/eventQueries';
+import { GET_USER_PROFILE, GET_USER_EVENTS, GET_FOLLOW_STATUS } from '~/graphql/eventQueries';
 import { FOLLOW_USER, UNFOLLOW_USER } from '~/graphql/eventMutations';
 import EventCard from '~/components/events/EventCard.vue';
 
@@ -246,7 +239,7 @@ const {
   }
 );
 
-// Enrich events with images
+// Enrich events with image data
 const enrichedEvents = computed(() => {
   const events = eventsResult.value?.events || [];
   return events.map((event: any) => {
@@ -264,22 +257,12 @@ const enrichedEvents = computed(() => {
   });
 });
 
-// Stats
-const followersCount = computed(() => {
-  return user.value?.followers_aggregate?.aggregate?.count || 0;
-});
+// Stats calculated from structural Hasura schema names mapping
+const followersCount = computed(() => user.value?.follows_aggregate?.aggregate?.count || 0);
+const followingCount = computed(() => user.value?.followsByFollowerId_aggregate?.aggregate?.count || 0);
 
-const followingCount = computed(() => {
-  return user.value?.following_aggregate?.aggregate?.count || 0;
-});
-
-const totalViews = computed(() => {
-  const events = eventsResult.value?.events || [];
-  return events.reduce((sum: number, e: any) => sum + (e.view_count || 0), 0);
-});
-
-// Check if current user follows this user
-const { refetch: refetchFollowStatus } = useQuery(
+// Check follow status
+const { result: followStatusResult, refetch: refetchFollowStatus } = useQuery(
   GET_FOLLOW_STATUS,
   () => ({
     followerId: authStore.user?.id || '',
@@ -291,7 +274,15 @@ const { refetch: refetchFollowStatus } = useQuery(
   }
 );
 
-// Mutations
+watch(followStatusResult, (newVal) => {
+  if (newVal?.follows?.length > 0) {
+    isFollowing.value = true;
+  } else {
+    isFollowing.value = false;
+  }
+}, { immediate: true });
+
+// Follow/Unfollow Mutations
 const { mutate: followMutation } = useMutation(FOLLOW_USER);
 const { mutate: unfollowMutation } = useMutation(UNFOLLOW_USER);
 
@@ -308,7 +299,7 @@ const toggleFollow = async () => {
   followLoading.value = true;
   try {
     if (isFollowing.value) {
-      const result = await unfollowMutation({
+      const result: any = await unfollowMutation({
         followerId: currentUserId,
         followedUserId: userId.value
       });
@@ -319,7 +310,7 @@ const toggleFollow = async () => {
         await refetchFollowStatus();
       }
     } else {
-      const result = await followMutation({
+      const result: any = await followMutation({
         followerId: currentUserId,
         followedUserId: userId.value
       });
@@ -330,9 +321,9 @@ const toggleFollow = async () => {
         await refetchFollowStatus();
       }
     }
-  } catch (error: any) {
-    console.error('Follow error:', error);
-    toast.error(error.message || 'Failed to update follow status');
+  } catch (err: any) {
+    console.error('Follow operation error:', err);
+    toast.error(err.message || 'Failed to update follow status.');
   } finally {
     followLoading.value = false;
   }
@@ -359,7 +350,7 @@ const formatDate = (dateStr: string) => {
   }
 };
 
-// Watch for userId changes
+// Watch for user ID changes
 watch(userId, async (newId) => {
   if (newId) {
     await refetch();

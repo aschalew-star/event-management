@@ -129,7 +129,7 @@
 
                 <div class="p-2">
                   <NuxtLink
-                    to="/profile"
+                    to="/user-profile"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200"
                     @click="closeDropdown"
                   >

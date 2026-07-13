@@ -153,3 +153,19 @@ delete_permissions:
         user_id:
           _eq: X-Hasura-User-Id
     comment: ""
+event_triggers:
+  - name: event_notification_trigger
+    definition:
+      enable_manual: false
+      insert:
+        columns: '*'
+      update:
+        columns: '*'
+    retry_conf:
+      interval_sec: 10
+      num_retries: 0
+      timeout_sec: 60
+    webhook: http://172.17.0.1:4000/api/notifications/event
+    headers:
+      - name: X-Event-Trigger-Secret
+        value: asche-muleta123456ghegeasche

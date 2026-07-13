@@ -33,6 +33,7 @@ select_permissions:
   - role: anonymous
     permission:
       columns:
+        - event_id
         - status
       filter: {}
       allow_aggregations: true

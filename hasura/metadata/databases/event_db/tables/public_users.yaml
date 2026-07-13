@@ -51,6 +51,7 @@ select_permissions:
         - avatar_url
         - bio
         - created_at
+        - email
         - id
         - name
         - updated_at
